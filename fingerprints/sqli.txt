@@ -1,0 +1,159 @@
+# SQLi error-based fingerprints — ported from nuclei-templates
+# dast/vulnerabilities/sqli/sqli-error-based.yaml (152 patterns, all DBMS)
+# Format: name: regex   (baris dengan awalan # adalah komentar)
+# Negative rules use a !name prefix: if they match, positive hits are suppressed.
+# Matched against response bodies (capped at 1 MB), like nuclei error-based SQLi.
+# False-positive guard from the nuclei template: Adminer pages render SQL errors.
+!adminer: Adminer
+mysql-1: SQL syntax.{0,500}?MySQL
+mysql-2: Warning.{0,500}?\Wmysqli?_
+mysql-3: MySQLSyntaxErrorException
+mysql-4: valid MySQL result
+mysql-5: check the manual that (corresponds to|fits) your MySQL server version
+mysql-6: Unknown column '[^ ]+' in 'field list'
+mysql-7: MySqlClient\.
+mysql-8: com\.mysql\.jdbc
+mysql-9: Zend_Db_(Adapter|Statement)_Mysqli_Exception
+mysql-10: Pdo[./_\\]Mysql
+mysql-11: MySqlException
+mysql-12: SQLSTATE\[\d+\]: Syntax error or access violation
+mariadb-1: check the manual that (corresponds to|fits) your MariaDB server version
+drizzle-1: check the manual that (corresponds to|fits) your Drizzle server version
+memsql-1: MemSQL does not support this type of query
+memsql-2: is not supported by MemSQL
+memsql-3: unsupported nested scalar subselect
+postgresql-1: PostgreSQL.{0,500}?ERROR
+postgresql-2: Warning.{0,500}?\Wpg_
+postgresql-3: valid PostgreSQL result
+postgresql-4: Npgsql\.
+postgresql-5: PG::SyntaxError:
+postgresql-6: org\.postgresql\.util\.PSQLException
+postgresql-7: ERROR:\s\ssyntax error at or near
+postgresql-8: ERROR: parser: parse error at or near
+postgresql-9: PostgreSQL query failed
+postgresql-10: org\.postgresql\.jdbc
+postgresql-11: Pdo[./_\\]Pgsql
+postgresql-12: PSQLException
+mssql-1: Driver.{0,500}? SQL[\-\_\ ]*Server
+mssql-2: OLE DB.{0,500}? SQL Server
+mssql-3: \bSQL Server[^&lt;&quot;]+Driver
+mssql-4: Warning.{0,500}?\W(mssql|sqlsrv)_
+mssql-5: \bSQL Server[^&lt;&quot;]+[0-9a-fA-F]{8}
+mssql-6: System\.Data\.SqlClient\.SqlException\.(SqlException|SqlConnection\.OnError)
+mssql-7: (?s)Exception.{0,500}?\bRoadhouse\.Cms\.
+mssql-8: Microsoft SQL Native Client error '[0-9a-fA-F]{8}
+mssql-9: \[SQL Server\]
+mssql-10: ODBC SQL Server Driver
+mssql-11: ODBC Driver \d+ for SQL Server
+mssql-12: SQLServer JDBC Driver
+mssql-13: com\.jnetdirect\.jsql
+mssql-14: macromedia\.jdbc\.sqlserver
+mssql-15: Zend_Db_(Adapter|Statement)_Sqlsrv_Exception
+mssql-16: com\.microsoft\.sqlserver\.jdbc
+mssql-17: Pdo[./_\\](Mssql|SqlSrv)
+mssql-18: SQL(Srv|Server)Exception
+mssql-19: Unclosed quotation mark after the character string
+msaccess-1: Microsoft Access (\d+ )?Driver
+msaccess-2: JET Database Engine
+msaccess-3: Access Database Engine
+msaccess-4: ODBC Microsoft Access
+msaccess-5: Syntax error \(missing operator\) in query expression
+oracle-1: \bORA-\d{5}
+oracle-2: Oracle error
+oracle-3: Oracle.{0,500}?Driver
+oracle-4: Warning.{0,500}?\W(oci|ora)_
+oracle-5: quoted string not properly terminated
+oracle-6: SQL command not properly ended
+oracle-7: macromedia\.jdbc\.oracle
+oracle-8: oracle\.jdbc
+oracle-9: Zend_Db_(Adapter|Statement)_Oracle_Exception
+oracle-10: Pdo[./_\\](Oracle|OCI)
+oracle-11: OracleException
+db2-1: CLI Driver.{0,500}?DB2
+db2-2: DB2 SQL error
+db2-3: \bdb2_\w+\(
+db2-4: SQLCODE[=:\d, -]+SQLSTATE
+db2-5: com\.ibm\.db2\.jcc
+db2-6: Zend_Db_(Adapter|Statement)_Db2_Exception
+db2-7: Pdo[./_\\]Ibm
+db2-8: DB2Exception
+db2-9: ibm_db_dbi\.ProgrammingError
+informix-1: Warning.{0,500}?\Wifx_
+informix-2: Exception.{0,500}?Informix
+informix-3: Informix ODBC Driver
+informix-4: ODBC Informix driver
+informix-5: com\.informix\.jdbc
+informix-6: weblogic\.jdbc\.informix
+informix-7: Pdo[./_\\]Informix
+informix-8: IfxException
+firebird-1: Dynamic SQL Error
+firebird-2: Warning.{0,500}?\Wibase_
+firebird-3: org\.firebirdsql\.jdbc
+firebird-4: Pdo[./_\\]Firebird
+sqlite-1: SQLite/JDBCDriver
+sqlite-2: SQLite\.Exception
+sqlite-3: (Microsoft|System)\.Data\.SQLite\.SQLiteException
+sqlite-4: Warning.{0,500}?\W(sqlite_|SQLite3::)
+sqlite-5: SQLITE_ERROR
+sqlite-6: SQLite error \d+:
+sqlite-7: sqlite3.OperationalError:
+sqlite-8: SQLite3::SQLException
+sqlite-9: org\.sqlite\.JDBC
+sqlite-10: Pdo[./_\\]Sqlite
+sqlite-11: SQLiteException
+maxdb-1: SQL error.{0,500}?POS([0-9]+)
+maxdb-2: Warning.{0,500}?\Wmaxdb_
+maxdb-3: DriverSapDB
+maxdb-4: -3014.{0,500}?Invalid end of SQL statement
+maxdb-5: com\.sap\.dbtech\.jdbc
+maxdb-6: \[-3008\].{0,500}?: Invalid keyword or missing delimiter
+sybase-1: Warning.{0,500}?\Wsybase_
+sybase-2: Sybase message
+sybase-3: Sybase.{0,500}?Server message
+sybase-4: SybSQLException
+sybase-5: Sybase\.Data\.AseClient
+sybase-6: com\.sybase\.jdbc
+ingres-1: Warning.{0,500}?\Wingres_
+ingres-2: Ingres SQLSTATE
+ingres-3: Ingres\W.{0,500}?Driver
+ingres-4: com\.ingres\.gcf\.jdbc
+frontbase-1: Exception (condition )?\d+\. Transaction rollback
+frontbase-2: com\.frontbase\.jdbc
+frontbase-3: Syntax error 1. Missing
+frontbase-4: (Semantic|Syntax) error [1-4]\d{2}\.
+hsqldb-1: Unexpected end of command in statement \[
+hsqldb-2: Unexpected token.{0,500}?in statement \[
+hsqldb-3: org\.hsqldb\.jdbc
+h2-1: org\.h2\.jdbc
+h2-2: \[42000-192\]
+monetdb-1: ![0-9]{5}![^\n]+(failed|unexpected|error|syntax|expected|violation|exception)
+monetdb-2: \[MonetDB\]\[ODBC Driver
+monetdb-3: nl\.cwi\.monetdb\.jdbc
+derby-1: Syntax error: Encountered
+derby-2: org\.apache\.derby
+derby-3: ERROR 42X01
+vertica-1: , Sqlstate: (3F|42).{3}, (Routine|Hint|Position):
+vertica-2: /vertica/Parser/scan
+vertica-3: com\.vertica\.jdbc
+vertica-4: org\.jkiss\.dbeaver\.ext\.vertica
+vertica-5: com\.vertica\.dsi\.dataengine
+mckoi-1: com\.mckoi\.JDBCDriver
+mckoi-2: com\.mckoi\.database\.jdbc
+mckoi-3: &lt;REGEX_LITERAL&gt;
+presto-1: com\.facebook\.presto\.jdbc
+presto-2: io\.prestosql\.jdbc
+presto-3: com\.simba\.presto\.jdbc
+presto-4: UNION query has different number of fields: \d+, \d+
+altibase-1: Altibase\.jdbc\.driver
+mimersql-1: com\.mimer\.jdbc
+mimersql-2: Syntax error,[^\n]+assumed to mean
+cratedb-1: io\.crate\.client\.jdbc
+cache-1: encountered after end of query
+cache-2: A comparison operator is required here
+raima-1: -10048: Syntax error
+raima-2: rdmStmtPrepare\(.+?\) returned
+virtuoso-1: SQ074: Line \d+:
+virtuoso-2: SR185: Undefined procedure
+virtuoso-3: SQ200: No table 
+virtuoso-4: Virtuoso S0002 Error
+virtuoso-5: \[(Virtuoso Driver|Virtuoso iODBC Driver)\]\[Virtuoso Server\]

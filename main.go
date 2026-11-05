@@ -103,6 +103,7 @@ func main() {
 	noCachePtr := flag.Bool("nb", false, "Disable the cachebuster query parameter")
 	showAllPtr := flag.Bool("all", false, "Show every result (disable deduplication by status code + content length)")
 	lfiPtr := flag.Bool("lfi", false, "Fuzz with the LFI wordlist + fingerprints (config: ~/.config/headerpwn)")
+	sqliPtr := flag.Bool("sqli", false, "Fuzz with the error-based SQLi wordlist + fingerprints (152 nuclei SQLi patterns, all DBMS)")
 	rcePtr := flag.Bool("rce", false, "Fuzz with the RCE wordlist + fingerprints (incl. log4shell $collabplz OOB)")
 	ssrfPtr := flag.Bool("ssrf", false, "Fuzz with the SSRF wordlist + fingerprints ($collabplz OOB, google.com whitelist bypass)")
 	sstiPtr := flag.Bool("ssti", false, "Fuzz with the SSTI wordlist + fingerprints")
@@ -132,6 +133,9 @@ func main() {
 	selected := make([]string, 0)
 	if *lfiPtr {
 		selected = append(selected, "lfi")
+	}
+	if *sqliPtr {
+		selected = append(selected, "sqli")
 	}
 	if *rcePtr {
 		selected = append(selected, "rce")
@@ -220,7 +224,7 @@ func main() {
 	}
 	if len(headers) == 0 {
 		if raw == nil {
-			fatal("Please provide -headers, a bug-class flag (-lfi, -rce, -ssrf, -ssti, -xxe, -redirect), or -r")
+			fatal("Please provide -headers, a bug-class flag (-lfi, -sqli, -rce, -ssrf, -ssti, -xxe, -redirect), or -r")
 		}
 		headers = []string{""}
 	}
@@ -721,9 +725,18 @@ func doRequest(client *http.Client, spec *RequestSpec, method, fuzzHeader string
 
 	var matches []string
 	if len(bodyBytes) > 0 {
+		suppressed := false
 		for _, rule := range fingerprints {
-			if rule.Re.Match(bodyBytes) {
-				matches = append(matches, rule.Name)
+			if rule.Negative && rule.Re.Match(bodyBytes) {
+				suppressed = true
+				break
+			}
+		}
+		if !suppressed {
+			for _, rule := range fingerprints {
+				if !rule.Negative && rule.Re.Match(bodyBytes) {
+					matches = append(matches, rule.Name)
+				}
 			}
 		}
 	}

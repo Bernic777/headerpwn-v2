@@ -23,11 +23,12 @@ const collabMarker = "$collabplz"
 // whitelistDomain is the trusted domain used by whitelist-bypass payloads.
 const whitelistDomain = "google.com"
 
-var collectionNames = []string{"lfi", "rce", "xxe", "ssrf", "ssti", "redirect"}
+var collectionNames = []string{"lfi", "sqli", "rce", "xxe", "ssrf", "ssti", "redirect"}
 
 type fingerprintRule struct {
-	Name string
-	Re   *regexp.Regexp
+	Name     string
+	Re       *regexp.Regexp
+	Negative bool
 }
 
 type bugCollection struct {
@@ -124,7 +125,9 @@ func loadCollection(name, oobDomain string) (*bugCollection, error) {
 }
 
 // loadFingerprints parses "name: regex" lines (or bare regex lines, where the
-// regex doubles as the name). Lines starting with # are comments.
+// regex doubles as the name). Lines starting with # are comments. A name
+// prefixed with ! marks a negative rule: if it matches, every positive match
+// for that response is suppressed (mirrors nuclei's negative matchers).
 func loadFingerprints(path string) ([]fingerprintRule, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -152,11 +155,19 @@ func loadFingerprints(path string) ([]fingerprintRule, error) {
 			return nil, fmt.Errorf("%s:%d: empty regex", path, lineNumber)
 		}
 
+		negative := strings.HasPrefix(name, "!")
+		if negative {
+			name = strings.TrimSpace(strings.TrimPrefix(name, "!"))
+			if name == "" {
+				name = "negative"
+			}
+		}
+
 		compiled, err := regexp.Compile(pattern)
 		if err != nil {
 			return nil, fmt.Errorf("%s:%d: invalid regex %q: %w", path, lineNumber, pattern, err)
 		}
-		rules = append(rules, fingerprintRule{Name: name, Re: compiled})
+		rules = append(rules, fingerprintRule{Name: name, Re: compiled, Negative: negative})
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err

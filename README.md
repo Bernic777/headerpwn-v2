@@ -6,7 +6,7 @@
 
 **HTTP header fuzzer & bug-class payload scanner**
 
-[![Version](https://img.shields.io/badge/version-v2.0.0-2ea44f?style=for-the-badge)](https://github.com/Bernic777/headerpwn-v2/releases)
+[![Version](https://img.shields.io/badge/version-v2.1.0-2ea44f?style=for-the-badge)](https://github.com/Bernic777/headerpwn-v2/releases)
 [![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-6e40c9?style=for-the-badge)]()
@@ -31,6 +31,7 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
   - [OOB Payloads](#oob-payloads-collabplz)
   - [Whitelist Bypass](#whitelist-bypass-googlecom)
   - [Fingerprints](#fingerprints)
+  - [SQLi (Error-Based)](#sqli-error-based)
   - [Raw Requests (Burp Repeater)](#raw-requests-burp-repeater)
   - [Output](#output)
 - [Flags](#flags)
@@ -40,8 +41,9 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 
 ## Features
 
-- **Bug-class wordlists** — LFI, RCE, XXE, SSRF, SSTI, and open redirect, packed with real-world header payloads.
-- **Nuclei-style fingerprinting** — response bodies are matched against regex patterns and hits are highlighted as `[MATCH: ...]`.
+- **Bug-class wordlists** — LFI, error-based SQLi, RCE, XXE, SSRF, SSTI, and open redirect, packed with real-world header payloads.
+- **Nuclei-style fingerprinting** — response bodies are matched against regex patterns and hits are highlighted as `[MATCH: ...]`; SQLi ships 152 error signatures across 29 DBMS.
+- **Negative matchers** — `!name: regex` rules (e.g. the nuclei `Adminer` false-positive guard) suppress noisy hits.
 - **Any HTTP method** — `-m POST`, comma-separated lists, `-ma` for all common methods, or custom verbs like `PURGE`.
 - **Raw request replay** — drop a full request copied from Burp Repeater with `-r`, including HTTP/2 request lines and bodies.
 - **OOB ready** — blind payloads use `$collabplz`, auto-replaced with a Burp Collaborator domain; use `-oob` outside Burp.
@@ -56,7 +58,8 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 | --- | --- | --- |
 | HTTP methods | GET only | `-m`, `-ma`, comma lists, custom verbs |
 | Request source | URL only | URL or full raw request (`-r`) |
-| Payloads | generic `headers.txt` | bug-class collections (`-lfi`, `-rce`, `-xxe`, `-ssrf`, `-ssti`, `-redirect`) |
+| Payloads | generic `headers.txt` | bug-class collections (`-lfi`, `-sqli`, `-rce`, `-xxe`, `-ssrf`, `-ssti`, `-redirect`) |
+| SQLi detection | — | 270 header probes + 152 error-based patterns across 29 DBMS (`-sqli`) |
 | Detection | status + length | nuclei-style body fingerprints with `[MATCH: ...]` |
 | Output | streaming duplicates | deduplicated summary, unique status highlighting |
 | Redirects | followed | **not followed** — `3xx` stays visible |
@@ -68,7 +71,7 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 **Go install (recommended):**
 
 ```sh
-go install github.com/Bernic777/headerpwn-v2@v2.0.0
+go install github.com/Bernic777/headerpwn-v2@v2.1.0
 ```
 
 **Build from source:**
@@ -135,6 +138,7 @@ Ready-made header + payload collections per bug class are stored in the app's co
 ~/.config/headerpwn/
 ├── wordlists/            # headers + payloads, one per line
 │   ├── lfi.txt
+│   ├── sqli.txt
 │   ├── rce.txt
 │   ├── xxe.txt
 │   ├── ssrf.txt
@@ -142,6 +146,7 @@ Ready-made header + payload collections per bug class are stored in the app's co
 │   └── redirect.txt
 └── fingerprints/         # nuclei-style regexes, one per line: "name: regex"
     ├── lfi.txt
+    ├── sqli.txt
     ├── rce.txt
     ├── xxe.txt
     ├── ssrf.txt
@@ -153,6 +158,7 @@ Select a collection with its flag (they combine):
 
 ```sh
 headerpwn -url https://example.com -lfi
+headerpwn -url https://example.com -sqli
 headerpwn -url https://example.com -rce
 headerpwn -url https://example.com -ssrf
 headerpwn -url https://example.com -ssti
@@ -169,6 +175,7 @@ headerpwn -list
 | Flag | Payloads | Fingerprints | Focus |
 | --- | --- | --- | --- |
 | `-lfi` | 28 | 8 | path traversal, wrappers, localization includes |
+| `-sqli` | 270 | 152 (+1 guard) | error-based SQLi: quote/boolean breakouts + DBMS error-forcing probes (MySQL, PostgreSQL, MSSQL, Oracle, SQLite, and more) |
 | `-rce` | 22 | 6 | command separators, ShellShock, log4shell (`$collabplz`) |
 | `-xxe` | 12 | 7 | in-band `file://` and blind `$collabplz` entities |
 | `-ssrf` | 34 | 9 | OOB callbacks, cloud metadata, `google.com` whitelist bypass |
@@ -191,14 +198,45 @@ The SSRF and redirect collections assume `google.com` is the whitelisted/trusted
 
 ### Fingerprints
 
-When a bug-class flag is used, response bodies (capped at 1 MB) are matched against the regexes in `fingerprints/<class>.txt` — nuclei-style patterns such as `root:x:0:0:` (LFI/XXE), `uid=\d+\([^)]*\)` (RCE), `ami-id` / `instance-id` (SSRF), `7777777` (SSTI). Hits are shown as `[MATCH: name]`, sorted to the top, and summarized:
+When a bug-class flag is used, response bodies (capped at 1 MB) are matched against the regexes in `fingerprints/<class>.txt` — nuclei-style patterns such as `root:x:0:0:` (LFI/XXE), `SQL syntax.{0,500}?MySQL` (SQLi), `uid=\d+\([^)]*\)` (RCE), `ami-id` / `instance-id` (SSRF), `7777777` (SSTI). Hits are shown as `[MATCH: name]`, sorted to the top, and summarized:
 
 ```
 [GET] [200] [CL: 67] [X-Original-URL: /etc/passwd] [https://example.com] [MATCH: etc-passwd, daemon-passwd]
+[GET] [500] [CL: 92] [X-Forwarded-For: "] [https://example.com] [MATCH: mysql-12]
 [+] Fingerprint matches: 25 request(s) hit a fingerprint (rows marked [MATCH: ...])
 ```
 
+A rule whose name is prefixed with `!` is a **negative matcher**: when it matches the body, all positive hits for that response are suppressed. The SQLi set uses this for the nuclei `Adminer` guard, so pages that merely render SQL errors themselves do not produce false positives.
+
 Edit the fingerprint files to add your own patterns; delete a file to restore the default on the next run. Redirect detection is status-based (`3xx`) — redirects are never followed, so a `302` appears directly in the output.
+
+### SQLi (Error-Based)
+
+The `-sqli` collection ports the nuclei error-based SQLi fuzzing template to header injection: **270 probes across 21 headers**, with quotes, numeric/boolean breakouts, and DBMS-specific error-forcing payloads (`extractvalue` / `updatexml` for MySQL, `CAST` for PostgreSQL, `CONVERT` for MSSQL, `UTL_INADDR` for Oracle, comment probes for SQLite). Fingerprints contain **152 error signatures covering 29 DBMS** — MySQL/MariaDB/Drizzle/MemSQL, PostgreSQL, MSSQL/Access, Oracle, DB2, Informix, Firebird, SQLite, MaxDB, Sybase, and many more.
+
+```sh
+# Error-based SQLi probes (headers: X-Forwarded-For, X-Real-IP, User-Agent, Referer, Cookie, ...)
+headerpwn -url https://example.com -sqli
+
+# Combine with other classes and show every header/payload combination
+headerpwn -url https://example.com -sqli -rce -all
+
+# Replay a Burp request with SQLi probes and an OOB callback domain
+headerpwn -r raw.txt -sqli -oob abc123.oast.pro
+```
+
+Error-based SQLi often appears as an HTTP `500` whose body leaks a database error. The default deduplication keeps one representative per unique status + content length + match set; use `-all` to see exactly which header and payload triggered each hit.
+
+```sh
+$ headerpwn -url https://example.com -sqli
+
+[GET] [500] [CL: 92] [X-Forwarded-For: "] [https://example.com] [MATCH: mysql-12]
+[GET] [500] [CL: 60] [X-Forwarded-For: ' AND 1=CAST((SELECT version()) AS int)-- -] [https://example.com] [MATCH: postgresql-1, postgresql-9]
+[GET] [500] [CL: 93] [X-Forwarded-For: ' AND 1=CONVERT(int,@@version)-- -] [https://example.com] [MATCH: mssql-19]
+[+] 270 requests -> 5 unique results (duplicate status/length combinations hidden, use -all to show all)
+[+] Status codes: [200] [500]
+[+] Fingerprint matches: 90 request(s) hit a fingerprint (rows marked [MATCH: ...])
+```
 
 ## Raw Requests (Burp Repeater)
 
@@ -287,6 +325,7 @@ headerpwn -url https://example.com -headers my_headers.txt -ma -all
 | `-nb` | Disable the cachebuster query parameter |
 | `-all` | Show every result (disable status + content length deduplication) |
 | `-lfi` | Fuzz with the LFI wordlist + fingerprints |
+| `-sqli` | Fuzz with the error-based SQLi wordlist + 152 fingerprints (29 DBMS, Adminer guard) |
 | `-rce` | Fuzz with the RCE wordlist + fingerprints (log4shell `$collabplz` OOB) |
 | `-ssrf` | Fuzz with the SSRF wordlist + fingerprints (`$collabplz` OOB, `google.com` whitelist) |
 | `-ssti` | Fuzz with the SSTI wordlist + fingerprints |
@@ -326,7 +365,7 @@ headerpwn -url https://example.com -headers my_headers.txt -proxy 127.0.0.1:8080
 - **v2 development & maintenance:** [Bernic Yesnat (@Bernic777)](https://github.com/Bernic777)
 - **Original headerpwn:** [Devansh Batham (@devanshbatham)](https://github.com/devanshbatham)
 - **`headers.txt` sources:** compiled from various sources, including the [SecLists project](https://github.com/danielmiessler/SecLists).
-- **Fingerprint patterns:** inspired by [Nuclei](https://github.com/projectdiscovery/nuclei) fuzzing templates.
+- **Fingerprint patterns:** inspired by [Nuclei](https://github.com/projectdiscovery/nuclei) fuzzing templates. The SQLi collection ports [`dast/vulnerabilities/sqli/sqli-error-based.yaml`](https://github.com/projectdiscovery/nuclei-templates/blob/main/dast/vulnerabilities/sqli/sqli-error-based.yaml) (patterns + payloads + Adminer guard).
 
 ## Disclaimer
 
