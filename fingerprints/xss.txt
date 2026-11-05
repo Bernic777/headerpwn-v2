@@ -1,0 +1,9 @@
+# XSS fingerprints — detect unencoded reflection of the fuzzed payload
+# Format: name: regex   (baris dengan awalan # adalah komentar)
+
+xss-script: <script>alert\(1\)</script>
+xss-svg: <svg/onload=alert\(1\)>
+xss-img: <img src=x onerror=alert\(1\)>
+xss-img-dq: \"><img src=x onerror=alert\(1\)>
+xss-iframe: <iframe src=javascript:alert\(1\)>
+xss-js-uri: javascript:alert\(1\)

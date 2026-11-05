@@ -59,6 +59,7 @@ type Result struct {
 	StatusCode    int
 	ContentLength int64
 	Matches       []string
+	MatchClasses  []string
 }
 
 type Header struct {
@@ -87,6 +88,7 @@ type responseInfo struct {
 	ContentLength int64
 	URL           string
 	Matches       []string
+	MatchClasses  []string
 }
 
 func main() {
@@ -106,7 +108,8 @@ func main() {
 	sqliPtr := flag.Bool("sqli", false, "Fuzz with the error-based SQLi wordlist + fingerprints (152 nuclei SQLi patterns, all DBMS)")
 	rcePtr := flag.Bool("rce", false, "Fuzz with the RCE wordlist + fingerprints (incl. log4shell $collabplz OOB)")
 	ssrfPtr := flag.Bool("ssrf", false, "Fuzz with the SSRF wordlist + fingerprints ($collabplz OOB, google.com whitelist bypass)")
-	sstiPtr := flag.Bool("ssti", false, "Fuzz with the SSTI wordlist + fingerprints")
+	sstiPtr := flag.Bool("ssti", false, "Fuzz with the SSTI wordlist + fingerprints (includes the 7*1000 = 7000 arithmetic probe)")
+	xssPtr := flag.Bool("xss", false, "Fuzz with the XSS wordlist + fingerprints (unencoded script reflection)")
 	xxePtr := flag.Bool("xxe", false, "Fuzz with the XXE wordlist + fingerprints ($collabplz OOB)")
 	redirectPtr := flag.Bool("redirect", false, "Fuzz with the open-redirect wordlist (google.com as whitelisted domain)")
 	listPtr := flag.Bool("list", false, "List bug-class wordlists/fingerprints in the config directory and exit")
@@ -148,6 +151,9 @@ func main() {
 	}
 	if *sstiPtr {
 		selected = append(selected, "ssti")
+	}
+	if *xssPtr {
+		selected = append(selected, "xss")
 	}
 	if *redirectPtr {
 		selected = append(selected, "redirect")
@@ -224,7 +230,7 @@ func main() {
 	}
 	if len(headers) == 0 {
 		if raw == nil {
-			fatal("Please provide -headers, a bug-class flag (-lfi, -sqli, -rce, -ssrf, -ssti, -xxe, -redirect), or -r")
+			fatal("Please provide -headers, a bug-class flag (-lfi, -sqli, -rce, -ssrf, -ssti, -xxe, -xss, -redirect), or -r")
 		}
 		headers = []string{""}
 	}
@@ -275,6 +281,7 @@ func main() {
 					StatusCode:    response.StatusCode,
 					ContentLength: response.ContentLength,
 					Matches:       response.Matches,
+					MatchClasses:  response.MatchClasses,
 				}
 			}(method, header)
 		}
@@ -724,6 +731,7 @@ func doRequest(client *http.Client, spec *RequestSpec, method, fuzzHeader string
 	}
 
 	var matches []string
+	var matchClasses []string
 	if len(bodyBytes) > 0 {
 		suppressed := false
 		for _, rule := range fingerprints {
@@ -736,6 +744,7 @@ func doRequest(client *http.Client, spec *RequestSpec, method, fuzzHeader string
 			for _, rule := range fingerprints {
 				if !rule.Negative && rule.Re.Match(bodyBytes) {
 					matches = append(matches, rule.Name)
+					matchClasses = append(matchClasses, rule.Class)
 				}
 			}
 		}
@@ -746,6 +755,7 @@ func doRequest(client *http.Client, spec *RequestSpec, method, fuzzHeader string
 		ContentLength: contentLength,
 		URL:           target.String(),
 		Matches:       matches,
+		MatchClasses:  matchClasses,
 	}, nil
 }
 
@@ -947,4 +957,142 @@ func printResults(results []Result, showAll bool) {
 	if matchCount > 0 {
 		fmt.Printf("[+] Fingerprint matches: %d request(s) hit a fingerprint (rows marked [MATCH: ...])\n", matchCount)
 	}
+
+	printCandidateSummary(results, displayed)
+}
+
+var candidateClassOrder = []struct {
+	key   string
+	label string
+}{
+	{"rce", "RCE"},
+	{"sqli", "SQLi"},
+	{"ssti", "SSTI"},
+	{"xxe", "XXE"},
+	{"xss", "XSS"},
+	{"ssrf", "SSRF"},
+}
+
+// printCandidateSummary highlights the interesting subset of the scan: results
+// whose fingerprint matched one of the high-signal bug classes, plus results
+// whose Content-Length deviates from the most common length (baseline).
+func printCandidateSummary(results, displayed []Result) {
+	if len(results) == 0 {
+		return
+	}
+
+	classTotal := make(map[string]int, len(candidateClassOrder))
+	for _, result := range results {
+		seen := make(map[string]struct{}, len(result.MatchClasses))
+		for _, class := range result.MatchClasses {
+			if _, ok := seen[class]; ok {
+				continue
+			}
+			seen[class] = struct{}{}
+			classTotal[class]++
+		}
+	}
+
+	classRows := make(map[string][]Result, len(candidateClassOrder))
+	for _, result := range displayed {
+		seen := make(map[string]struct{}, len(result.MatchClasses))
+		for _, class := range result.MatchClasses {
+			if _, ok := seen[class]; ok {
+				continue
+			}
+			seen[class] = struct{}{}
+			classRows[class] = append(classRows[class], result)
+		}
+	}
+
+	baseline, baselineCount := modeContentLength(results)
+	clTotal := 0
+	for _, result := range results {
+		if result.ContentLength != baseline {
+			clTotal++
+		}
+	}
+	clRows := make([]Result, 0, len(displayed))
+	for _, result := range displayed {
+		if result.ContentLength != baseline {
+			clRows = append(clRows, result)
+		}
+	}
+
+	hasClasses := false
+	for _, class := range candidateClassOrder {
+		if classTotal[class.key] > 0 {
+			hasClasses = true
+			break
+		}
+	}
+	if !hasClasses && len(clRows) == 0 {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("[+] Candidates")
+	if baselineCount > 0 {
+		fmt.Printf("    Content-Length baseline: %d bytes (most common across %d responses)\n", baseline, baselineCount)
+	}
+
+	for _, class := range candidateClassOrder {
+		if classTotal[class.key] == 0 {
+			continue
+		}
+		rows := classRows[class.key]
+		fmt.Printf("    [%s] %d request(s) matched a fingerprint (%d unique row(s))\n", class.label, classTotal[class.key], len(rows))
+		printCandidateRows(rows, baseline, 5)
+	}
+
+	if len(clRows) > 0 {
+		sort.SliceStable(clRows, func(i, j int) bool {
+			di := absInt64(clRows[i].ContentLength - baseline)
+			dj := absInt64(clRows[j].ContentLength - baseline)
+			if di != dj {
+				return di > dj
+			}
+			return clRows[i].ContentLength < clRows[j].ContentLength
+		})
+		fmt.Printf("    [Content-Length] %d request(s) differ from baseline (%d unique row(s))\n", clTotal, len(clRows))
+		printCandidateRows(clRows, baseline, 8)
+	}
+}
+
+func printCandidateRows(rows []Result, baseline int64, limit int) {
+	for i, result := range rows {
+		if i >= limit {
+			fmt.Printf("      ... and %d more row(s)\n", len(rows)-limit)
+			return
+		}
+		matchOutput := ""
+		if len(result.Matches) > 0 {
+			matchOutput = fmt.Sprintf(" [MATCH: %s]", strings.Join(result.Matches, ", "))
+		}
+		fmt.Printf("      [%d] [CL: %d] (%+d) [%s]%s\n",
+			result.StatusCode, result.ContentLength, result.ContentLength-baseline, result.Header, matchOutput)
+	}
+}
+
+func modeContentLength(results []Result) (int64, int) {
+	counts := make(map[int64]int, len(results))
+	for _, result := range results {
+		counts[result.ContentLength]++
+	}
+	var mode int64
+	best := 0
+	for length, count := range counts {
+		if count > best || (count == best && length < mode) {
+			mode = length
+			best = count
+		}
+	}
+	return mode, best
+}
+
+func absInt64(value int64) int64 {
+	if value < 0 {
+		return -value
+	}
+	return value
 }

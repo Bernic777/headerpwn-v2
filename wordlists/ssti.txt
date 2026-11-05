@@ -1,5 +1,5 @@
 # SSTI (server-side template injection) via headers
-# Fingerprints: fingerprints/ssti.txt (nuclei-style regexes: 49, 7777777, template errors)
+# Fingerprints: fingerprints/ssti.txt (nuclei-style regexes: 49, 7000, template errors)
 X-Template: {{7*7}}
 X-Template: {{7*'7'}}
 X-Template: ${7*7}
@@ -12,3 +12,19 @@ User-Agent: {{7*7}}
 Referer: {{7*7}}
 Accept-Language: {{7*7}}
 X-Forwarded-Host: {{7*7}}.example.com
+
+# Strong arithmetic probe: 7*1000 = 7000. 7000 appears only if the template is
+# actually evaluated (the raw payload contains 7*1000, not 7000), so a body hit
+# on \b7000\b is a strong SSTI candidate.
+X-Template: {{7*1000}}
+X-Template: ${7*1000}
+X-Template: #{7*1000}
+X-Template: <%= 7*1000 %>
+X-Tpl: {{7*1000}}
+X-Name: {{7*1000}}
+User-Agent: {{7*1000}}
+Referer: {{7*1000}}
+Accept-Language: {{7*1000}}
+X-Forwarded-For: {{7*1000}}
+X-Forwarded-Host: {{7*1000}}.example.com
+Cookie: {{7*1000}}

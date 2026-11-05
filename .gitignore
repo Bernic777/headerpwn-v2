@@ -4,4 +4,5 @@
 # built binaries
 /headerpwn
 /headerpwn-v2
+/dist/
 *.exe
