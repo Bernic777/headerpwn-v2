@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -83,6 +85,18 @@ type RequestSpec struct {
 	Body    []byte
 }
 
+// multiFlag collects a repeatable string flag (e.g. -header).
+type multiFlag []string
+
+func (m *multiFlag) String() string {
+	return strings.Join(*m, ", ")
+}
+
+func (m *multiFlag) Set(value string) error {
+	*m = append(*m, value)
+	return nil
+}
+
 type responseInfo struct {
 	StatusCode    int
 	ContentLength int64
@@ -103,7 +117,11 @@ func main() {
 	timeoutPtr := flag.Duration("timeout", 15*time.Second, "Per-request timeout")
 	concurrencyPtr := flag.Int("c", 10, "Number of concurrent requests")
 	noCachePtr := flag.Bool("nb", false, "Disable the cachebuster query parameter")
-	showAllPtr := flag.Bool("all", false, "Show every result (disable deduplication by status code + content length)")
+	showAllPtr := flag.Bool("all", false, "Show every result (disable deduplication by status code + content length + fingerprint match set)")
+	portPtr := flag.Int("port", 0, "Override the target port (1-65535)")
+	var extraHeaderArgs multiFlag
+	flag.Var(&extraHeaderArgs, "header", "Extra header sent with every request (repeatable), e.g. -header 'Cookie: session=abc'")
+	silentPtr := flag.Bool("silent", false, "Only print fingerprint-matched candidates (no live results, summary, or Content-Length section)")
 	lfiPtr := flag.Bool("lfi", false, "Fuzz with the LFI wordlist + fingerprints (config: ~/.config/headerpwn)")
 	sqliPtr := flag.Bool("sqli", false, "Fuzz with the error-based SQLi wordlist + fingerprints (152 nuclei SQLi patterns, all DBMS)")
 	rcePtr := flag.Bool("rce", false, "Fuzz with the RCE wordlist + fingerprints (incl. log4shell $collabplz OOB)")
@@ -120,7 +138,7 @@ func main() {
 	log.SetFlags(0)
 	// Print tool banner
 
-	if !*quietPtr {
+	if !*quietPtr && !*silentPtr {
 		log.Print(`
 
 
@@ -166,6 +184,11 @@ func main() {
 		return
 	}
 
+	extraHeaders, err := parseExtraHeaders(extraHeaderArgs)
+	if err != nil {
+		fatal("Error: %v", err)
+	}
+
 	// Mandatory config layout: ~/.config/headerpwn/{wordlists,fingerprints}
 	if _, err := ensureConfigFiles(); err != nil {
 		if len(selected) > 0 {
@@ -192,6 +215,10 @@ func main() {
 		fatal("Error: -c must be greater than 0")
 	}
 
+	if *portPtr != 0 && (*portPtr < 1 || *portPtr > 65535) {
+		fatal("Error: -port must be between 1 and 65535")
+	}
+
 	if *urlPtr == "" && *rawPtr == "" {
 		fatal("Please provide a target using -url or a raw request using -r")
 	}
@@ -205,6 +232,11 @@ func main() {
 		raw, err = parseRawRequest(data)
 		if err != nil {
 			fatal("Error parsing raw request: %v", err)
+		}
+		if *portPtr > 0 && *urlPtr == "" {
+			// Let the port override also drive the scheme inference for raw
+			// relative targets (80 -> http, 443 -> https).
+			raw.Host = hostWithPort(raw.Host, *portPtr)
 		}
 	}
 
@@ -243,9 +275,20 @@ func main() {
 
 	methods := resolveMethods(*methodPtr, *allMethodsPtr, raw)
 
-	spec, err := buildRequestSpec(raw, *urlPtr, *schemePtr)
+	spec, err := buildRequestSpec(raw, *urlPtr, *schemePtr, *portPtr)
 	if err != nil {
 		fatal("Error: %v", err)
+	}
+
+	if *portPtr > 0 {
+		spec.URL.Host = hostWithPort(spec.URL.Host, *portPtr)
+		if spec.Host != "" {
+			spec.Host = hostWithPort(spec.Host, *portPtr)
+		}
+	}
+
+	for _, header := range extraHeaders {
+		setSpecHeader(spec, header)
 	}
 
 	client, err := newHTTPClient(*proxyPtr, *insecurePtr, *timeoutPtr)
@@ -293,11 +336,31 @@ func main() {
 	}()
 
 	collected := make([]Result, 0)
+	liveSeen := make(map[resultKey]struct{})
 	for result := range results {
 		collected = append(collected, result)
+
+		if *silentPtr {
+			continue
+		}
+
+		// Stream results as they finish. In the default mode, identical
+		// status + content-length + fingerprint combinations are printed once.
+		if !*showAllPtr {
+			key := resultKey{
+				StatusCode:    result.StatusCode,
+				ContentLength: result.ContentLength,
+				Matches:       strings.Join(result.Matches, ","),
+			}
+			if _, exists := liveSeen[key]; exists {
+				continue
+			}
+			liveSeen[key] = struct{}{}
+		}
+		printLiveResult(result)
 	}
 
-	printResults(collected, *showAllPtr)
+	printResults(collected, *showAllPtr, *silentPtr)
 }
 
 func fatal(format string, args ...any) {
@@ -503,11 +566,11 @@ func parseRawRequest(data []byte) (*RawRequest, error) {
 	return raw, nil
 }
 
-func buildRequestSpec(raw *RawRequest, targetURL, scheme string) (*RequestSpec, error) {
+func buildRequestSpec(raw *RawRequest, targetURL, scheme string, port int) (*RequestSpec, error) {
 	spec := &RequestSpec{}
 
 	if targetURL != "" {
-		parsed, err := normalizeURL(targetURL, scheme)
+		parsed, err := normalizeURL(targetURL, scheme, port)
 		if err != nil {
 			return nil, fmt.Errorf("invalid -url: %w", err)
 		}
@@ -540,7 +603,7 @@ func buildRequestSpec(raw *RawRequest, targetURL, scheme string) (*RequestSpec, 
 	return spec, nil
 }
 
-func normalizeURL(rawURL, scheme string) (*url.URL, error) {
+func normalizeURL(rawURL, scheme string, port int) (*url.URL, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
 		return nil, errors.New("empty URL")
@@ -548,7 +611,12 @@ func normalizeURL(rawURL, scheme string) (*url.URL, error) {
 
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		if scheme == "" || scheme == "auto" {
-			scheme = "https"
+			switch port {
+			case 80:
+				scheme = "http"
+			default:
+				scheme = "https"
+			}
 		}
 		rawURL = scheme + "://" + rawURL
 	}
@@ -767,6 +835,89 @@ func validateHeaderLine(line string) error {
 	return nil
 }
 
+// parseExtraHeaders validates -header values (repeatable, and a single value may
+// contain several "Name: value" lines separated by newlines). Hop-by-hop and
+// body-managed headers are rejected because the HTTP client owns them.
+func parseExtraHeaders(values []string) ([]Header, error) {
+	headers := make([]Header, 0, len(values))
+	for _, value := range values {
+		for _, line := range strings.Split(value, "\n") {
+			line = strings.TrimSpace(strings.TrimRight(line, "\r"))
+			if line == "" {
+				continue
+			}
+			name, headerValue, ok := strings.Cut(line, ":")
+			name = strings.TrimSpace(name)
+			headerValue = strings.TrimSpace(headerValue)
+			if !ok || name == "" {
+				return nil, errors.New("invalid -header value (expected \"Name: value\")")
+			}
+			if !validHeaderName(name) {
+				return nil, fmt.Errorf("invalid -header name %q", name)
+			}
+			lowerName := strings.ToLower(name)
+			if lowerName == "content-length" || hopByHopHeaders[lowerName] {
+				return nil, fmt.Errorf("-header %q is managed by the HTTP client and cannot be overridden", name)
+			}
+			if strings.ContainsAny(headerValue, "\r\n\x00") {
+				return nil, fmt.Errorf("invalid value for -header %q", name)
+			}
+			headers = append(headers, Header{Name: name, Value: headerValue})
+		}
+	}
+	return headers, nil
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+			continue
+		}
+		if strings.ContainsRune("!#$%&'*+-.^_`|~", r) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// setSpecHeader adds an extra header to the request spec. A later -header with
+// the same name replaces an earlier one (and any raw-request header of the same
+// name). Host is special-cased because it is carried in spec.Host.
+func setSpecHeader(spec *RequestSpec, header Header) {
+	if strings.EqualFold(header.Name, "Host") {
+		spec.Host = header.Value
+		return
+	}
+	headers := make([]Header, 0, len(spec.Headers)+1)
+	for _, existing := range spec.Headers {
+		if !strings.EqualFold(existing.Name, header.Name) {
+			headers = append(headers, existing)
+		}
+	}
+	headers = append(headers, header)
+	spec.Headers = headers
+}
+
+// hostWithPort replaces or appends the given port to a host[:port] value,
+// preserving IPv6 literals.
+func hostWithPort(host string, port int) string {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+	if hostname, _, err := net.SplitHostPort(host); err == nil {
+		return net.JoinHostPort(hostname, strconv.Itoa(port))
+	}
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		return net.JoinHostPort(strings.TrimSuffix(strings.TrimPrefix(host, "["), "]"), strconv.Itoa(port))
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port))
+}
+
 func applyFuzzHeader(req *http.Request, line string) error {
 	name, value, ok := strings.Cut(line, ":")
 	name = strings.TrimSpace(name)
@@ -857,16 +1008,71 @@ func pluralSuffix(count int) string {
 	return "s"
 }
 
-func printResults(results []Result, showAll bool) {
+var (
+	statusGreen    = color.New(color.FgGreen).SprintFunc()
+	statusYellow   = color.New(color.FgYellow).SprintFunc()
+	statusRed      = color.New(color.FgRed).SprintFunc()
+	statusWhiteRed = color.New(color.FgWhite, color.BgRed, color.Bold).SprintFunc()
+)
+
+func statusStyleFor(statusCode int) func(...interface{}) string {
+	switch {
+	case statusCode >= 500:
+		return statusWhiteRed
+	case statusCode >= 400:
+		return statusRed
+	case statusCode >= 300:
+		return statusYellow
+	default:
+		return statusGreen
+	}
+}
+
+// printLiveResult prints a result as soon as its request finishes, so output
+// streams during the scan instead of waiting for all requests to complete.
+func printLiveResult(result Result) {
 	blue := color.New(color.FgBlue).SprintFunc()
 	magenta := color.New(color.FgMagenta).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	whiteOnRed := color.New(color.FgWhite, color.BgRed, color.Bold).SprintFunc()
-	uniqueStatus := color.New(color.FgBlack, color.BgYellow, color.Bold).SprintFunc()
 	matchStyle := color.New(color.FgBlack, color.BgHiRed, color.Bold).SprintFunc()
+
+	displayURL := result.URL
+	if parsedURL, err := url.Parse(result.URL); err == nil {
+		query := parsedURL.Query()
+		query.Del("cachebuster")
+		parsedURL.RawQuery = query.Encode()
+		displayURL = parsedURL.String()
+	}
+
+	matchOutput := ""
+	if len(result.Matches) > 0 {
+		matchOutput = " " + matchStyle(fmt.Sprintf("[MATCH: %s]", strings.Join(result.Matches, ", ")))
+	}
+
+	fmt.Printf("%s %s %s %s %s%s\n",
+		blue(fmt.Sprintf("[%s]", result.Method)),
+		statusStyleFor(result.StatusCode)(fmt.Sprintf("[%d]", result.StatusCode)),
+		magenta(fmt.Sprintf("[CL: %d]", result.ContentLength)),
+		cyan(fmt.Sprintf("[%s]", result.Header)),
+		yellow(fmt.Sprintf("[%s]", displayURL)),
+		matchOutput)
+}
+
+func printResults(results []Result, showAll, silent bool) {
+	displayed := results
+	if !showAll {
+		displayed = dedupeResults(results)
+	}
+	sortResults(displayed)
+
+	if silent {
+		// -silent: only fingerprint-matched candidates, nothing else.
+		printCandidateSummary(results, displayed, true)
+		return
+	}
+
+	uniqueStatus := color.New(color.FgBlack, color.BgYellow, color.Bold).SprintFunc()
 
 	// Status frequency is computed on all results so a common status code
 	// (e.g. repeated 200s) is not mistaken for a unique one after dedupe.
@@ -875,50 +1081,11 @@ func printResults(results []Result, showAll bool) {
 		statusCounts[result.StatusCode]++
 	}
 
-	displayed := results
-	if !showAll {
-		displayed = dedupeResults(results)
-	}
-	sortResults(displayed)
-
 	statusStyle := func(statusCode int) func(...interface{}) string {
 		if statusCounts[statusCode] == 1 {
 			return uniqueStatus
 		}
-		switch {
-		case statusCode >= 500:
-			return whiteOnRed
-		case statusCode >= 400:
-			return red
-		case statusCode >= 300:
-			return yellow
-		default:
-			return green
-		}
-	}
-
-	for _, result := range displayed {
-		methodOutput := blue(fmt.Sprintf("[%s]", result.Method))
-		statusOutput := statusStyle(result.StatusCode)(fmt.Sprintf("[%d]", result.StatusCode))
-		contentLengthOutput := magenta(fmt.Sprintf("[CL: %d]", result.ContentLength))
-		headerOutput := cyan(fmt.Sprintf("[%s]", result.Header))
-
-		displayURL := result.URL
-		if parsedURL, err := url.Parse(result.URL); err == nil {
-			query := parsedURL.Query()
-			query.Del("cachebuster")
-			parsedURL.RawQuery = query.Encode()
-			displayURL = parsedURL.String()
-		}
-		urlOutput := yellow(fmt.Sprintf("[%s]", displayURL))
-
-		matchOutput := ""
-		if len(result.Matches) > 0 {
-			matchOutput = " " + matchStyle(fmt.Sprintf("[MATCH: %s]", strings.Join(result.Matches, ", ")))
-		}
-
-		resultOutput := fmt.Sprintf("%s %s %s %s %s%s", methodOutput, statusOutput, contentLengthOutput, headerOutput, urlOutput, matchOutput)
-		fmt.Println(resultOutput)
+		return statusStyleFor(statusCode)
 	}
 
 	if len(results) == 0 {
@@ -958,7 +1125,7 @@ func printResults(results []Result, showAll bool) {
 		fmt.Printf("[+] Fingerprint matches: %d request(s) hit a fingerprint (rows marked [MATCH: ...])\n", matchCount)
 	}
 
-	printCandidateSummary(results, displayed)
+	printCandidateSummary(results, displayed, false)
 }
 
 var candidateClassOrder = []struct {
@@ -973,10 +1140,14 @@ var candidateClassOrder = []struct {
 	{"ssrf", "SSRF"},
 }
 
+// maxNoisyContentLengthCandidates is the cutoff above which Content-Length
+// deviations are treated as noise unless a fingerprint also matched.
+const maxNoisyContentLengthCandidates = 5
+
 // printCandidateSummary highlights the interesting subset of the scan: results
 // whose fingerprint matched one of the high-signal bug classes, plus results
 // whose Content-Length deviates from the most common length (baseline).
-func printCandidateSummary(results, displayed []Result) {
+func printCandidateSummary(results, displayed []Result, silent bool) {
 	if len(results) == 0 {
 		return
 	}
@@ -1003,6 +1174,37 @@ func printCandidateSummary(results, displayed []Result) {
 			seen[class] = struct{}{}
 			classRows[class] = append(classRows[class], result)
 		}
+	}
+
+	if silent {
+		// -silent: print only the fingerprint-matched candidates, nothing else.
+		hasClasses := false
+		for _, class := range candidateClassOrder {
+			if classTotal[class.key] > 0 {
+				hasClasses = true
+				break
+			}
+		}
+		if !hasClasses {
+			return
+		}
+		fmt.Println("[+] Candidates")
+		for _, class := range candidateClassOrder {
+			if classTotal[class.key] == 0 {
+				continue
+			}
+			rows := classRows[class.key]
+			fmt.Printf("    [%s] %d request(s) matched a fingerprint (%d unique row(s))\n", class.label, classTotal[class.key], len(rows))
+			for _, result := range rows {
+				matchOutput := ""
+				if len(result.Matches) > 0 {
+					matchOutput = fmt.Sprintf(" [MATCH: %s]", strings.Join(result.Matches, ", "))
+				}
+				fmt.Printf("      [%d] [CL: %d] [%s]%s\n",
+					result.StatusCode, result.ContentLength, result.Header, matchOutput)
+			}
+		}
+		return
 	}
 
 	baseline, baselineCount := modeContentLength(results)
@@ -1042,7 +1244,17 @@ func printCandidateSummary(results, displayed []Result) {
 		}
 		rows := classRows[class.key]
 		fmt.Printf("    [%s] %d request(s) matched a fingerprint (%d unique row(s))\n", class.label, classTotal[class.key], len(rows))
-		printCandidateRows(rows, baseline, 5)
+		printCandidateRows(rows, baseline)
+	}
+
+	// A large number of Content-Length deviations is usually page noise or a
+	// WAF/rate-limit response, not a useful signal. Only show the section when
+	// deviations are few; rows with a fingerprint match are always listed in
+	// their class section above.
+	if clTotal > maxNoisyContentLengthCandidates {
+		fmt.Printf("    [Content-Length] %d request(s) differ from baseline - skipped (>%d without a fingerprint match is too noisy)\n",
+			clTotal, maxNoisyContentLengthCandidates)
+		return
 	}
 
 	if len(clRows) > 0 {
@@ -1055,16 +1267,12 @@ func printCandidateSummary(results, displayed []Result) {
 			return clRows[i].ContentLength < clRows[j].ContentLength
 		})
 		fmt.Printf("    [Content-Length] %d request(s) differ from baseline (%d unique row(s))\n", clTotal, len(clRows))
-		printCandidateRows(clRows, baseline, 8)
+		printCandidateRows(clRows, baseline)
 	}
 }
 
-func printCandidateRows(rows []Result, baseline int64, limit int) {
-	for i, result := range rows {
-		if i >= limit {
-			fmt.Printf("      ... and %d more row(s)\n", len(rows)-limit)
-			return
-		}
+func printCandidateRows(rows []Result, baseline int64) {
+	for _, result := range rows {
 		matchOutput := ""
 		if len(result.Matches) > 0 {
 			matchOutput = fmt.Sprintf(" [MATCH: %s]", strings.Join(result.Matches, ", "))

@@ -6,7 +6,7 @@
 
 **HTTP header fuzzer & bug-class payload scanner**
 
-[![Version](https://img.shields.io/badge/version-v2.2.0-2ea44f?style=for-the-badge)](https://github.com/Bernic777/headerpwn-v2/releases)
+[![Version](https://img.shields.io/badge/version-v2.2.1-2ea44f?style=for-the-badge)](https://github.com/Bernic777/headerpwn-v2/releases)
 [![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-6e40c9?style=for-the-badge)]()
@@ -44,14 +44,17 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 
 - **Bug-class wordlists** — LFI, error-based SQLi, RCE, XXE, XSS, SSRF, SSTI, and open redirect, packed with real-world header payloads.
 - **Nuclei-style fingerprinting** — response bodies are matched against regex patterns and hits are highlighted as `[MATCH: ...]`; SQLi ships 152 error signatures across 29 DBMS.
-- **Candidate summary** — at the end of every scan, results are grouped per bug class (RCE, SQLi, SSTI, XXE, XSS, SSRF) and Content-Length deviations are listed against the baseline.
+- **Candidate summary** — at the end of every scan, fingerprint hits are grouped per bug class (RCE, SQLi, SSTI, XXE, XSS, SSRF) and Content-Length deviations are listed against the baseline. Matched candidates are shown in full; noisy Content-Length deviations (more than 5) are skipped unless a fingerprint matched.
 - **Strong SSTI probe** — the `7*1000` payload evaluates to `7000`; the raw payload never contains `7000`, so a body hit is a high-confidence candidate.
 - **Negative matchers** — `!name: regex` rules (e.g. the nuclei `Adminer` false-positive guard) suppress noisy hits.
 - **Any HTTP method** — `-m POST`, comma-separated lists, `-ma` for all common methods, or custom verbs like `PURGE`.
 - **Raw request replay** — drop a full request copied from Burp Repeater with `-r`, including HTTP/2 request lines and bodies.
 - **OOB ready** — blind payloads use `$collabplz`, auto-replaced with a Burp Collaborator domain; use `-oob` outside Burp.
 - **Whitelist bypass payloads** — SSRF/redirect collections assume `google.com` is the trusted domain and include bypass variants.
-- **Low-noise output** — deduplicated by status + content length, unique status codes highlighted, fingerprint hits sorted to the top.
+- **Low-noise output** — results stream as each response arrives, deduplicated by status + content length, unique status codes highlighted, and fingerprint hits are flagged with `[MATCH: ...]`.
+- **Silent mode** — `-silent` prints only fingerprint-matched candidates (no live results, summary, or Content-Length noise), ideal for scripts and pipelines.
+- **Extra headers** — `-header "Cookie: ..."` (repeatable) adds custom headers to every request, e.g. authenticated scans; raw-request headers of the same name are overridden.
+- **Port override** — `-port 8443` switches the target port for both `-url` and `-r` scans.
 - **Burp-friendly** — built-in proxy support, TLS verification toggle, timeouts, and a configurable concurrency limit.
 - **Config-driven** — wordlists and fingerprints live in `~/.config/headerpwn/` and can be edited freely.
 
@@ -65,9 +68,12 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 | SQLi detection | — | 270 header probes + 152 error-based patterns across 29 DBMS (`-sqli`) |
 | XSS detection | — | 128 reflection probes + unencoded-payload fingerprints (`-xss`) |
 | SSTI probe | — | `7*1000` → `7000` arithmetic canary (`-ssti`) |
-| Candidate summary | — | per-class candidates + Content-Length deviations at the end of the scan |
+| Candidate summary | — | per-class candidates + filtered Content-Length deviations at the end of the scan |
 | Detection | status + length | nuclei-style body fingerprints with `[MATCH: ...]` |
-| Output | streaming duplicates | deduplicated summary, unique status highlighting |
+| Output | printed after the scan, duplicates | streamed live, deduplicated, unique status highlighting |
+| Extra headers | — | `-header` (repeatable) custom headers on every request |
+| Target port | — | `-port` override for `-url` and `-r` |
+| Silent mode | — | `-silent` prints only fingerprint-matched candidates |
 | Redirects | followed | **not followed** — `3xx` stays visible |
 | Blind testing | — | `$collabplz` / `-oob` OOB integration |
 | Configuration | hardcoded | `~/.config/headerpwn/{wordlists,fingerprints}` |
@@ -78,16 +84,16 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 
 | OS | Architectures | Asset pattern |
 | --- | --- | --- |
-| Linux | `amd64`, `arm64`, `armv7`, `386` | `headerpwn-v2.2.0-linux-amd64` |
-| Windows | `amd64`, `arm64`, `386` | `headerpwn-v2.2.0-windows-amd64.exe` |
-| macOS | `amd64`, `arm64` (Apple Silicon) | `headerpwn-v2.2.0-darwin-arm64` |
-| FreeBSD | `amd64` | `headerpwn-v2.2.0-freebsd-amd64` |
+| Linux | `amd64`, `arm64`, `armv7`, `386` | `headerpwn-v2.2.1-linux-amd64` |
+| Windows | `amd64`, `arm64`, `386` | `headerpwn-v2.2.1-windows-amd64.exe` |
+| macOS | `amd64`, `arm64` (Apple Silicon) | `headerpwn-v2.2.1-darwin-arm64` |
+| FreeBSD | `amd64` | `headerpwn-v2.2.1-freebsd-amd64` |
 
 ```sh
 # Linux amd64 example
-curl -LO https://github.com/Bernic777/headerpwn-v2/releases/download/v2.2.0/headerpwn-v2.2.0-linux-amd64
-chmod +x headerpwn-v2.2.0-linux-amd64
-sudo install -m 0755 headerpwn-v2.2.0-linux-amd64 /usr/local/bin/headerpwn
+curl -LO https://github.com/Bernic777/headerpwn-v2/releases/download/v2.2.1/headerpwn-v2.2.1-linux-amd64
+chmod +x headerpwn-v2.2.1-linux-amd64
+sudo install -m 0755 headerpwn-v2.2.1-linux-amd64 /usr/local/bin/headerpwn
 headerpwn -list
 ```
 
@@ -96,7 +102,7 @@ Each release includes `sha256sums.txt`; verify with `sha256sum -c sha256sums.txt
 **Go install:**
 
 ```sh
-go install github.com/Bernic777/headerpwn-v2@v2.2.0
+go install github.com/Bernic777/headerpwn-v2@v2.2.1
 ```
 
 **Build from source:**
@@ -108,7 +114,7 @@ go build -trimpath -ldflags="-s -w" -o headerpwn .
 sudo install -m 0755 headerpwn /usr/local/bin/headerpwn
 
 # Cross-compile every release target into dist/
-./scripts/build-binaries.sh v2.2.0 dist
+./scripts/build-binaries.sh v2.2.1 dist
 ```
 
 ## Usage
@@ -157,6 +163,26 @@ headerpwn -url https://example.com -headers my_headers.txt -m PURGE
 ```
 
 Every header from the headers file is tested once per selected method, so `-ma` with 100 headers sends 800 requests.
+
+## Extra Headers, Port, and Silent Mode
+
+```sh
+# Send a cookie/auth header with every request (repeatable; overrides the same
+# header from a raw request)
+headerpwn -url https://example.com -sqli -header "Cookie: session=abc123" -header "Authorization: Bearer token"
+
+# Scan a non-standard port with -url or -r
+headerpwn -url https://example.com -port 8443 -rce
+headerpwn -r raw.txt -port 8080 -scheme http -sqli
+
+# Only print fingerprint-matched candidates (no live results or summary) —
+# useful for scripts: empty output means no high-confidence match
+headerpwn -url https://example.com -sqli -silent
+```
+
+- `-header` accepts `Name: value` (repeatable, or several lines separated by newlines in one argument). Hop-by-hop headers (`Connection`, `Transfer-Encoding`, …) and `Content-Length` are rejected because the HTTP client manages them.
+- `-port` overrides the destination port for both `-url` and `-r` targets; with a raw relative target it also drives scheme inference (`80` → http, `443` → https).
+- `-silent` prints only the bug-class candidates that matched a fingerprint — no live stream, no summary, no Content-Length section. Combine with `-all` to list every matched request.
 
 ## Bug-Class Collections
 
@@ -273,28 +299,39 @@ $ headerpwn -url https://example.com -sqli
 
 ## Candidate Summary
 
-After the normal result list, every scan prints a compact **Candidates** block. It is built from two signals:
+At the end of every scan, after the streamed results, headerpwn prints a compact **Candidates** block. It is built from two signals:
 
-1. Fingerprint hits in the high-signal classes: **RCE, SQLi, SSTI, XXE, XSS, SSRF**.
+1. Fingerprint hits in the high-signal classes: **RCE, SQLi, SSTI, XXE, XSS, SSRF**. Every matching row is shown.
 2. **Content-Length deviation** from the baseline (the most common length across the run).
 
 ```text
 [+] Candidates
     Content-Length baseline: 31 bytes (most common across 180 responses)
     [SQLi] 90 request(s) matched a fingerprint (4 unique row(s))
-      [500] [CL: 92] (+61) [X-Forwarded-For: 1"] [MATCH: mysql-12]
       [500] [CL: 60] (+29) [X-Forwarded-For: ' AND 1=CAST((SELECT version()) AS int)-- -] [MATCH: postgresql-1, postgresql-9]
-      ... and 2 more row(s)
+      [500] [CL: 92] (+61) [X-Forwarded-For: ;] [MATCH: mysql-12]
+      [500] [CL: 93] (+62) [X-Forwarded-For: ' AND 1=CONVERT(int,@@version)-- -] [MATCH: mssql-19]
+      [500] [CL: 184] (+153) [Referer: 1' AND extractvalue(1,concat(0x7e,version()))-- -] [MATCH: mysql-1, mysql-5]
     [SSTI] 12 request(s) matched a fingerprint (1 unique row(s))
       [200] [CL: 13] (+5) [X-Template: ${7*1000}] [MATCH: ssti-7000]
-    [Content-Length] 90 request(s) differ from baseline (4 unique row(s))
-      [500] [CL: 184] (+153) [User-Agent: 1' AND extractvalue(1,concat(0x7e,version()))-- -] [MATCH: mysql-1, mysql-5]
-      ...
+    [Content-Length] 90 request(s) differ from baseline - skipped (>5 without a fingerprint match is too noisy)
+```
+
+A run where only a few lengths changed still shows the Content-Length section:
+
+```text
+[+] Candidates
+    Content-Length baseline: 67 bytes (most common across 25 responses)
+    [Content-Length] 3 request(s) differ from baseline (1 unique row(s))
+      [200] [CL: 2] (-65) [X-Path: %2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd]
 ```
 
 - The baseline is the modal response length; each candidate shows its delta as `(+N)` / `(-N)` bytes.
-- Rows are capped at 5 per class and 8 for Content-Length; use `-all` to print every individual request.
-- The block also appears for plain `-headers` runs — then it contains only the Content-Length section.
+- **Fingerprint matches are always shown, with no per-class cap**, even when Content-Length is noisy.
+- **Content-Length noise filter:** if more than 5 requests deviate from the baseline, the section is replaced by a one-line `skipped` note. This prevents a WAF/rate-limit page (for example hundreds of `[200] [CL: 0]` rows) from flooding the output. Matched rows remain visible in their class sections.
+- Use `-all` to list every individual request instead of one row per unique status + Content-Length + match set.
+- Use `-silent` to print only the fingerprint-matched class candidates (no Content-Length section at all).
+- The block also appears for plain `-headers` runs — then it contains only the Content-Length section (still subject to the 5-deviation filter).
 - **SSTI canary:** the collection sends `{{7*1000}}`, `${7*1000}`, `<%= 7*1000 %>`, and friends. The raw payload contains `7*1000`, never the string `7000`, so a `\b7000\b` body hit (`MATCH: ssti-7000`) is a strong sign of actual template evaluation — often together with a large Content-Length delta.
 - **XSS:** `-xss` reflects script payloads into headers; fingerprints only fire when the response contains the raw, unencoded markup.
 - **SQLi:** the `Adminer` negative matcher suppresses pages that merely render SQL error strings.
@@ -352,13 +389,12 @@ Notes:
 
 ## Output
 
-Results are collected and printed after all requests finish. By default, identical responses are collapsed into one line per unique **status code + Content-Length** combination, so a run that produces hundreds of `[200] [CL: 1234]` lines shows just one representative.
+Results **stream as each request finishes**, so output appears progressively during the scan. By default, identical responses are collapsed live into one line per unique **status code + Content-Length + fingerprint match set**, so a run that produces hundreds of identical `[200] [CL: 1234]` lines shows just one representative. Use `-all` to stream every individual request.
 
-- Results are sorted by fingerprint match first, then status code, then content length.
+- The summary (request count, displayed results, status codes, fingerprint hit count) and the candidate block are printed after the last request completes, because they need the full result set.
 - Status codes that occurred only once across the whole run are highlighted (black on yellow), so outliers such as a single `403` or `500` stand out.
 - Status classes are colored: 2xx green, 3xx yellow, 4xx red, 5xx white on red.
-- Fingerprint hits show `[MATCH: ...]`; deduplication keeps one row per unique status + content length + match set, and the final candidate block groups hits by bug class.
-- A summary at the end shows the number of requests, displayed results, every status code, and the fingerprint hit count.
+- Fingerprint hits show `[MATCH: ...]` and are grouped by bug class in the final candidate block.
 - Use `-all` to disable deduplication and print every individual result.
 
 ```sh
