@@ -1,0 +1,8 @@
+# XXE fingerprints — nuclei-style regexes (blind/OOB dicek manual via Collaborator)
+etc-passwd: root:x:0:0:
+xml-entity: <!ENTITY
+xml-parse-error: XML Parsing Error
+java-file-not-found: java\.io\.FileNotFoundException
+sax-error: SAXParseException
+lxml-error: lxml\.etree\.XMLSyntaxError
+php-simplexml: simplexml_load_string\(\)

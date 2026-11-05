@@ -1,0 +1,7 @@
+# local tooling / session state
+.opencode/
+
+# built binaries
+/headerpwn
+/headerpwn-v2
+*.exe

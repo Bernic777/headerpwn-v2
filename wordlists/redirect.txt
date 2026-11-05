@@ -1,0 +1,13 @@
+# Open redirect / host-header injection via headers — google.com as whitelisted domain
+X-Redirect: https://google.com
+X-Redirect-To: https://google.com
+X-Location: https://google.com
+X-Url: https://google.com
+X-Base-URL: https://google.com
+X-Forwarded-Host: google.com
+X-Host: google.com
+X-Original-URL: https://google.com
+X-Rewrite-URL: https://google.com
+X-Forwarded-URL: https://google.com
+Referer: https://google.com
+X-Forwarded-Proto: https

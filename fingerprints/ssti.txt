@@ -1,0 +1,8 @@
+# SSTI fingerprints — nuclei-style regexes
+# catatan: math-49 bisa false positive, edit sesuai target
+jinja2-mult: 7777777
+math-49: \b49\b
+twig-error: Twig_Error
+freemarker-error: FreeMarker template error
+jinja2-exception: jinja2\.exceptions
+tpl-syntax-error: TemplateSyntaxError

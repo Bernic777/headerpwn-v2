@@ -1,0 +1,10 @@
+# LFI fingerprints — nuclei-style regexes
+# Format: name: regex   (atau regex tanpa nama)
+etc-passwd: root:x:0:0:
+etc-passwd-alt: root:[^:\n]*:0:0:
+win-ini: \[extensions\]
+win-boot-loader: \[boot loader\]
+daemon-passwd: daemon:/usr/sbin
+open-basedir: open_basedir restriction
+stream-error: failed to open stream
+no-such-file: No such file or directory

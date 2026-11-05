@@ -1,0 +1,7 @@
+# RCE fingerprints — nuclei-style regexes
+uid-output: uid=\d+\([^)]*\)
+gid-output: gid=\d+\([^)]*\)
+www-data: www-data
+linux-uname: Linux \S+ \d+\.\d+
+ls-output: drwxr-xr-x
+ls-total: total \d+

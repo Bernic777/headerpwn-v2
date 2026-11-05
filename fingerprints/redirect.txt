@@ -1,0 +1,2 @@
+# Open redirect — tidak ada fingerprint body.
+# Deteksi: lihat status code 3xx (301/302/307) pada hasil scan.

