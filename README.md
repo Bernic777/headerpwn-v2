@@ -180,6 +180,16 @@ headerpwn -url https://example.com -headers my_headers.txt -m PURGE
 
 Every header from the headers file is tested once per selected method, so `-ma` with 100 headers sends 800 requests.
 
+<p align="center">
+  <img src="static/method-single.png" alt="Single method: -m POST against a localhost target" width="760"><br>
+  <sub><b>-m POST</b> — 6 headers × 1 method: <code>X-Crash</code> triggers a <b>500</b>, <code>X-Original-URL</code> bypasses the <b>403</b> on <code>/admin</code>.</sub>
+</p>
+
+<p align="center">
+  <img src="static/method-all.png" alt="All methods: -ma against a localhost target" width="760"><br>
+  <sub><b>-ma</b> — 6 headers × 8 methods = <b>48 requests</b> in one run; status codes 200 / 204 / 403 / 405 / 500 captured per method.</sub>
+</p>
+
 ## Targets, Extra Headers, Port, and Silent Mode
 
 ```sh
@@ -276,6 +286,11 @@ curl -s 'https://example.com/' -H 'X-Forwarded-Host: hdrpwn-RESPH-XFH%0d%0aX-Inj
 # Auth-bypass POC
 curl -s 'https://example.com/admin' -H 'X-Original-URL: /admin' -i
 ```
+
+<p align="center">
+  <img src="static/auth-bypass.png" alt="Auth-bypass candidates with POC curl commands on localhost" width="760"><br>
+  <sub><b>-auth -poc</b> on a localhost target — baseline 403, <code>X-Original-URL</code> / <code>X-Rewrite-URL</code> flip it to <b>200</b> and are flagged <b>[MATCH: auth-bypass]</b> with a ready-to-run curl POC.</sub>
+</p>
 
 ## Bug-Class Collections
 
