@@ -2,7 +2,7 @@
 
 # headerpwn v2
 
-<img src="static/banner.png" alt="headerpwn v2" width="760">
+<img src="static/banner.png?v=2" alt="headerpwn v2" width="760">
 
 **HTTP header fuzzer & bug-class payload scanner**
 
