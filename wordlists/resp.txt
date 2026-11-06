@@ -1,0 +1,19 @@
+# Response-header reflection probes (-resp)
+# Each payload injects a unique marker into a request header; the fingerprints
+# in fingerprints/resp.txt look for that marker in the RESPONSE HEADERS.
+# The %0d%0a variants test for encoded CRLF / response-splitting: if the app
+# decodes them and injects a header, "X-Injected-*: 1" appears in the response.
+X-Forwarded-Host: hdrpwn-RESPH-XFH
+X-Forwarded-For: hdrpwn-RESPH-XFF
+X-Original-URL: hdrpwn-RESPH-XOU
+X-Rewrite-URL: hdrpwn-RESPH-XRW
+X-Forwarded-Server: hdrpwn-RESPH-XFS
+X-Forwarded-Proto: hdrpwn-RESPH-XFP
+X-Client-IP: hdrpwn-RESPH-XCI
+X-Real-IP: hdrpwn-RESPH-XRI
+Referer: hdrpwn-RESPH-REF
+User-Agent: hdrpwn-RESPH-UAG
+X-Requested-With: hdrpwn-RESPH-XRW2
+Host: hdrpwn-RESPH-HST
+X-Forwarded-Host: hdrpwn-RESPH-XFH%0d%0aX-Injected-XFH: 1
+Referer: hdrpwn-RESPH-REF%0d%0aX-Injected-REF: 1

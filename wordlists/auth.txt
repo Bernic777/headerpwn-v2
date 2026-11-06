@@ -1,0 +1,17 @@
+# Auth-bypass header probes (-auth)
+# Detection is status-based: a no-header baseline is compared against each of
+# these headers. If the baseline is blocked (401/403/redirect) and a header
+# yields 2xx/3xx, it is flagged as an auth-bypass candidate.
+X-Original-URL: /admin
+X-Rewrite-URL: /admin
+X-Forwarded-For: 127.0.0.1
+X-Forwarded-For: 10.0.0.1
+X-Forwarded-For: 10.10.10.10
+X-Forwarded-Host: localhost
+X-Real-IP: 127.0.0.1
+X-Client-IP: 127.0.0.1
+X-Custom-IP-Authorization: 127.0.0.1
+X-Originating-IP: 127.0.0.1
+X-Remote-IP: 127.0.0.1
+X-Remote-Addr: 127.0.0.1
+X-Proxy-User-IP: 127.0.0.1

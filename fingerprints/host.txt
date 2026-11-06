@@ -1,0 +1,10 @@
+# Host header attack fingerprints (-host) - body-targeted markers.
+host-1: hdrpwn-HOST-1
+host-2: hdrpwn-HOST-2
+x-forwarded-host: hdrpwn-HOST-XFH
+x-host: hdrpwn-HOST-XH
+x-forwarded-server: hdrpwn-HOST-XFS
+x-original-host: hdrpwn-HOST-XOH
+x-rewrite-url: hdrpwn-HOST-XRW
+x-forwarded-for: hdrpwn-HOST-XFF
+x-forwarded-proto: hdrpwn-HOST-XFP

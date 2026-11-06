@@ -1,0 +1,16 @@
+# Response-header fingerprints (-resp) - these patterns run against the
+# serialized RESPONSE HEADERS (not the body).
+x-forwarded-host: hdrpwn-RESPH-XFH
+x-forwarded-for: hdrpwn-RESPH-XFF
+x-original-url: hdrpwn-RESPH-XOU
+x-rewrite-url: hdrpwn-RESPH-XRW
+x-forwarded-server: hdrpwn-RESPH-XFS
+x-forwarded-proto: hdrpwn-RESPH-XFP
+x-client-ip: hdrpwn-RESPH-XCI
+x-real-ip: hdrpwn-RESPH-XRI
+referer: hdrpwn-RESPH-REF
+user-agent: hdrpwn-RESPH-UAG
+x-requested-with: hdrpwn-RESPH-XRW2
+host: hdrpwn-RESPH-HST
+crlf-x-forwarded-host: X-Injected-XFH: 1
+crlf-referer: X-Injected-REF: 1

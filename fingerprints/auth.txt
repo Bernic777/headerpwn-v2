@@ -1,0 +1,4 @@
+# Auth-bypass fingerprints (-auth)
+# Auth-bypass detection is status-based (compared against a no-header baseline);
+# this file exists so the config layout stays consistent. Add regexes here to
+# also match auth-bypass response bodies.

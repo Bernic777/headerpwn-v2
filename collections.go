@@ -23,13 +23,16 @@ const collabMarker = "$collabplz"
 // whitelistDomain is the trusted domain used by whitelist-bypass payloads.
 const whitelistDomain = "google.com"
 
-var collectionNames = []string{"lfi", "sqli", "rce", "xxe", "xss", "ssrf", "ssti", "redirect"}
+var collectionNames = []string{"lfi", "sqli", "rce", "xxe", "xss", "ssrf", "ssti", "redirect", "resp", "host", "auth"}
 
 type fingerprintRule struct {
 	Class    string
 	Name     string
 	Re       *regexp.Regexp
 	Negative bool
+	// Target is what the pattern runs against: "body" (default) or "headers"
+	// (the serialized response header block, used by the -resp collection).
+	Target string
 }
 
 type bugCollection struct {
@@ -121,8 +124,13 @@ func loadCollection(name, oobDomain string) (*bugCollection, error) {
 	if err != nil {
 		return nil, err
 	}
+	target := "body"
+	if name == "resp" {
+		target = "headers"
+	}
 	for i := range fingerprints {
 		fingerprints[i].Class = name
+		fingerprints[i].Target = target
 	}
 
 	return &bugCollection{Name: name, Headers: headers, Fingerprints: fingerprints}, nil

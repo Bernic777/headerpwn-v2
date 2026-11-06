@@ -1,0 +1,13 @@
+# Host header attack probes (-host)
+# Unique markers injected into the Host header and host-override headers. If the
+# app builds an absolute URL from the header (password reset / cache poisoning /
+# routing SSRF), the marker appears in the response body and fingerprints match.
+Host: hdrpwn-HOST-1
+Host: hdrpwn-HOST-2
+X-Forwarded-Host: hdrpwn-HOST-XFH
+X-Host: hdrpwn-HOST-XH
+X-Forwarded-Server: hdrpwn-HOST-XFS
+X-Original-Host: hdrpwn-HOST-XOH
+X-Rewrite-URL: hdrpwn-HOST-XRW
+X-Forwarded-For: hdrpwn-HOST-XFF
+X-Forwarded-Proto: hdrpwn-HOST-XFP

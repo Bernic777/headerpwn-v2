@@ -6,7 +6,7 @@
 
 **HTTP header fuzzer & bug-class payload scanner**
 
-[![Version](https://img.shields.io/badge/version-v2.2.1-2ea44f?style=for-the-badge)](https://github.com/Bernic777/headerpwn-v2/releases)
+[![Version](https://img.shields.io/badge/version-v2.2.2-2ea44f?style=for-the-badge)](https://github.com/Bernic777/headerpwn-v2/releases)
 [![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-6e40c9?style=for-the-badge)]()
@@ -54,7 +54,14 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 - **Low-noise output** — results stream as each response arrives, deduplicated by status + content length, unique status codes highlighted, and fingerprint hits are flagged with `[MATCH: ...]`.
 - **Silent mode** — `-silent` prints only fingerprint-matched candidates (no live results, summary, or Content-Length noise), ideal for scripts and pipelines.
 - **Extra headers** — `-header "Cookie: ..."` (repeatable) adds custom headers to every request, e.g. authenticated scans; raw-request headers of the same name are overridden.
-- **Port override** — `-port 8443` switches the target port for both `-url` and `-r` scans.
+- **Port override & multi-port** — `-port 8443` or `-port 80,443,8080` switches the target port(s) for both `-url` and `-r` scans.
+- **Target lists** — `-l targets.txt` scans one target per line; each line may carry its own port (`https://api.example.com:8443`).
+- **Response-header reflection** — `-resp` injects markers into headers and fingerprints the response *headers* (not just the body), catching reflection and encoded CRLF / response splitting.
+- **Host header attacks** — `-host` detects Host / `X-Forwarded-Host` markers reflected into absolute URLs (password reset poisoning, cache poisoning, routing SSRF).
+- **Auth-bypass headers** — `-auth` compares status codes against a no-header baseline and flags 2xx/3xx where the baseline is 401/403/redirect.
+- **Timing anomalies** — `-timing` flags responses significantly slower than the median (blind SQLi / SSRF / smuggling hint).
+- **Request smuggling** — `-smuggle` runs raw-TCP CL.TE / TE.CL differential probes.
+- **Web cache poisoning** — `-cache` checks whether unkeyed headers are reflected and served from cache (paired-request differential).
 - **Burp-friendly** — built-in proxy support, TLS verification toggle, timeouts, and a configurable concurrency limit.
 - **Config-driven** — wordlists and fingerprints live in `~/.config/headerpwn/` and can be edited freely.
 
@@ -72,8 +79,17 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 | Detection | status + length | nuclei-style body fingerprints with `[MATCH: ...]` |
 | Output | printed after the scan, duplicates | streamed live, deduplicated, unique status highlighting |
 | Extra headers | — | `-header` (repeatable) custom headers on every request |
-| Target port | — | `-port` override for `-url` and `-r` |
+| Target port | — | `-port` override for `-url` and `-r` (comma-separated multi-port) |
+| Target lists | — | `-l` scans one target per line, each with its own port |
 | Silent mode | — | `-silent` prints only fingerprint-matched candidates |
+| POC | — | `-poc` prints a single-line curl for every candidate |
+| Save results | — | `-o` saves all results, `-ore` saves only regex-matched candidates |
+| Response-header reflection | — | `-resp` fingerprints response headers (incl. encoded CRLF) |
+| Host header attacks | — | `-host` detects Host/override reflection into absolute URLs |
+| Auth bypass | — | `-auth` status differential vs no-header baseline |
+| Timing anomalies | — | `-timing` flags slow responses (blind SQLi/SSRF/smuggling) |
+| Request smuggling | — | `-smuggle` raw-TCP CL.TE / TE.CL differential probes |
+| Cache poisoning | — | `-cache` unkeyed-header paired-request differential |
 | Redirects | followed | **not followed** — `3xx` stays visible |
 | Blind testing | — | `$collabplz` / `-oob` OOB integration |
 | Configuration | hardcoded | `~/.config/headerpwn/{wordlists,fingerprints}` |
@@ -84,16 +100,16 @@ Based on the original [headerpwn](https://github.com/devanshbatham/headerpwn) by
 
 | OS | Architectures | Asset pattern |
 | --- | --- | --- |
-| Linux | `amd64`, `arm64`, `armv7`, `386` | `headerpwn-v2.2.1-linux-amd64` |
-| Windows | `amd64`, `arm64`, `386` | `headerpwn-v2.2.1-windows-amd64.exe` |
-| macOS | `amd64`, `arm64` (Apple Silicon) | `headerpwn-v2.2.1-darwin-arm64` |
-| FreeBSD | `amd64` | `headerpwn-v2.2.1-freebsd-amd64` |
+| Linux | `amd64`, `arm64`, `armv7`, `386` | `headerpwn-v2.2.2-linux-amd64` |
+| Windows | `amd64`, `arm64`, `386` | `headerpwn-v2.2.2-windows-amd64.exe` |
+| macOS | `amd64`, `arm64` (Apple Silicon) | `headerpwn-v2.2.2-darwin-arm64` |
+| FreeBSD | `amd64` | `headerpwn-v2.2.2-freebsd-amd64` |
 
 ```sh
 # Linux amd64 example
-curl -LO https://github.com/Bernic777/headerpwn-v2/releases/download/v2.2.1/headerpwn-v2.2.1-linux-amd64
-chmod +x headerpwn-v2.2.1-linux-amd64
-sudo install -m 0755 headerpwn-v2.2.1-linux-amd64 /usr/local/bin/headerpwn
+curl -LO https://github.com/Bernic777/headerpwn-v2/releases/download/v2.2.2/headerpwn-v2.2.2-linux-amd64
+chmod +x headerpwn-v2.2.2-linux-amd64
+sudo install -m 0755 headerpwn-v2.2.2-linux-amd64 /usr/local/bin/headerpwn
 headerpwn -list
 ```
 
@@ -102,7 +118,7 @@ Each release includes `sha256sums.txt`; verify with `sha256sum -c sha256sums.txt
 **Go install:**
 
 ```sh
-go install github.com/Bernic777/headerpwn-v2@v2.2.1
+go install github.com/Bernic777/headerpwn-v2@v2.2.2
 ```
 
 **Build from source:**
@@ -114,7 +130,7 @@ go build -trimpath -ldflags="-s -w" -o headerpwn .
 sudo install -m 0755 headerpwn /usr/local/bin/headerpwn
 
 # Cross-compile every release target into dist/
-./scripts/build-binaries.sh v2.2.1 dist
+./scripts/build-binaries.sh v2.2.2 dist
 ```
 
 ## Usage
@@ -164,15 +180,19 @@ headerpwn -url https://example.com -headers my_headers.txt -m PURGE
 
 Every header from the headers file is tested once per selected method, so `-ma` with 100 headers sends 800 requests.
 
-## Extra Headers, Port, and Silent Mode
+## Targets, Extra Headers, Port, and Silent Mode
 
 ```sh
+# Scan a list of targets; each line may carry its own port
+headerpwn -l targets.txt -sqli -rce
+
 # Send a cookie/auth header with every request (repeatable; overrides the same
 # header from a raw request)
 headerpwn -url https://example.com -sqli -header "Cookie: session=abc123" -header "Authorization: Bearer token"
 
-# Scan a non-standard port with -url or -r
+# Scan a non-standard port (or several) with -url or -r
 headerpwn -url https://example.com -port 8443 -rce
+headerpwn -url https://example.com -port 80,443,8080 -sqli
 headerpwn -r raw.txt -port 8080 -scheme http -sqli
 
 # Only print fingerprint-matched candidates (no live results or summary) —
@@ -180,9 +200,82 @@ headerpwn -r raw.txt -port 8080 -scheme http -sqli
 headerpwn -url https://example.com -sqli -silent
 ```
 
+- `-l targets.txt` reads one target URL per line (`https://a.example.com`, `http://b.example.com:8080`, …). Blank lines and `#` comments are ignored. `-l` cannot be combined with `-url` or `-r`.
 - `-header` accepts `Name: value` (repeatable, or several lines separated by newlines in one argument). Hop-by-hop headers (`Connection`, `Transfer-Encoding`, …) and `Content-Length` are rejected because the HTTP client manages them.
-- `-port` overrides the destination port for both `-url` and `-r` targets; with a raw relative target it also drives scheme inference (`80` → http, `443` → https).
+- `-port` overrides the destination port for both `-url` and `-r` targets; with a raw relative target it also drives scheme inference (`80` → http, `443` → https). A comma-separated list scans every port.
 - `-silent` prints only the bug-class candidates that matched a fingerprint — no live stream, no summary, no Content-Length section. Combine with `-all` to list every matched request.
+
+## Advanced Probes
+
+```sh
+# Response-header reflection (markers reflected into response headers, incl. encoded CRLF)
+headerpwn -url https://example.com -resp
+
+# Host header attacks (Host/override headers reflected into absolute URLs)
+headerpwn -url https://example.com -host
+
+# Auth-bypass headers (status compared against a no-header baseline)
+headerpwn -url https://example.com -auth
+
+# Timing anomalies (slow responses = blind SQLi/SSRF/smuggling hint)
+headerpwn -url https://example.com -sqli -timing
+
+# Request smuggling (raw-TCP CL.TE / TE.CL differential probes)
+headerpwn -url https://example.com -smuggle
+
+# Web cache poisoning (unkeyed-header paired-request differential)
+headerpwn -url https://example.com -cache
+
+# Append a ready-to-run single-line curl command to every candidate
+headerpwn -url https://example.com -sqli -poc
+
+# Save all results to a file (one line per result + POC)
+headerpwn -url https://example.com -sqli -o results.txt
+
+# Save only VALID candidates (response regex match) to a file
+headerpwn -url https://example.com -sqli -ore valid.txt
+```
+
+- `-resp` fingerprints run against the **response headers** (not the body). The `%0d%0a` payloads test encoded CRLF / response splitting: if the app decodes them and injects a header, `X-Injected-*: 1` appears in the response.
+- `-auth` sends a baseline request with no fuzz header, then compares each auth-bypass header. A 2xx/3xx where the baseline is 401/403/redirect is flagged as `[AUTH] auth-bypass`.
+- `-timing` flags responses slower than `max(3 × median, 1s)`; it is computed over all requests so deduplication never hides a slow response.
+- `-smuggle` and `-cache` are per-target probes printed after the scan. Smuggling results are candidates to confirm manually; cache results list headers that are both reflected and unkeyed.
+- `-poc` prints a `POC:` line under every candidate with a **single-line curl command** (shell-quoted, no line breaks) that reproduces the exact request — paste it straight into a terminal.
+- `-o <file>` saves every result (deduplicated unless `-all`) as plain lines with a `POC:` curl. `-ore <file>` saves **only valid candidates** — defined as results with a fingerprint **regex match**. A regex match is the definition of valid: SQLi is often valid without a `500` (a DBMS error signature in the body is the real signal), and not every `500` is valid, so `-ore` never filters on status alone.
+
+### Candidate POCs (curl)
+
+Every candidate can be replayed directly with curl. With `-poc`, headerpwn prints the command for you:
+
+```sh
+$ headerpwn -url https://example.com -sqli -poc
+[+] Candidates
+    Content-Length baseline: 31 bytes (most common across 180 responses)
+    [SQLi] 90 request(s) matched a fingerprint (4 unique row(s))
+      [500] [CL: 92] (+61) [X-Forwarded-For: 1'] [MATCH: mysql-12]
+        POC: curl -s 'https://example.com/' -H 'X-Forwarded-For: 1'"'"''
+      [500] [CL: 60] (+29) [X-Forwarded-For: ' AND 1=CAST((SELECT version()) AS int)-- -] [MATCH: postgresql-1, postgresql-9]
+        POC: curl -s 'https://example.com/' -H 'X-Forwarded-For: '"'"' AND 1=CAST((SELECT version()) AS int)-- -'
+```
+
+The `POC:` line is one line with no line breaks, so you can copy it and run it directly:
+
+```sh
+curl -s 'https://example.com/' -H 'X-Forwarded-For: 1'"'"'' | grep -i 'mysql\|error'
+```
+
+For other classes the same pattern applies — RCE, XSS, SSTI, XXE, SSRF, `-resp`, `-host`, and `-auth` candidates all carry a `POC:` curl when `-poc` is used:
+
+```sh
+# RCE candidate POC (single line)
+curl -s 'https://example.com/' -H 'X-Forwarded-Host: $(id)'
+
+# Response-header reflection POC (encoded CRLF)
+curl -s 'https://example.com/' -H 'X-Forwarded-Host: hdrpwn-RESPH-XFH%0d%0aX-Injected-XFH: 1' -i
+
+# Auth-bypass POC
+curl -s 'https://example.com/admin' -H 'X-Original-URL: /admin' -i
+```
 
 ## Bug-Class Collections
 
@@ -240,6 +333,9 @@ headerpwn -list
 | `-ssrf` | 34 | 9 | OOB callbacks, cloud metadata, `google.com` whitelist bypass |
 | `-ssti` | 24 | 7 | `{{7*7}}` probes plus the strong `7*1000` → `7000` canary |
 | `-redirect` | 12 | — | host/callback headers, `google.com` as allowed domain |
+| `-resp` | 14 | 14 | response-header reflection + encoded CRLF / response splitting |
+| `-host` | 9 | 9 | Host / override headers reflected into absolute URLs |
+| `-auth` | 13 | — | auth-bypass headers, status compared to a no-header baseline |
 
 ### OOB Payloads (`$collabplz`)
 
